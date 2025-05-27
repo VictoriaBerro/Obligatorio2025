@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+
 public class Credits {
-    // lista de actores CAST y lista de miembros CREW
+    private ArrayList<Actor> cast;
+    private ArrayList<Miembro> crew;
 }
