@@ -1,3 +1,5 @@
+package entities;
+
 public class Miembro {
     private String credit_id;
     private String department;

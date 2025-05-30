@@ -1,3 +1,5 @@
+package entities;
+
 public class Actor {
     private int cast_id;
     private String character;

@@ -1,3 +1,5 @@
+package entities;
+
 public class Evaluacion { //LISTA
     private int userId;
     private int movieId;
