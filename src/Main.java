@@ -1,9 +1,11 @@
 import java.util.Scanner;
+import entities.Umovie;
 
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         boolean continuar = true;
+        Umovie umovie = new Umovie();
 
         while (continuar) {
             System.out.println("Seleccione la opción que desee:");
@@ -13,9 +15,14 @@ public class Main {
             int opcion = scanner.nextInt();
 
             if (opcion == 1) {
+                long inicio = System.currentTimeMillis();
+                umovie.cargarPeliculas("movies_metadata.csv");
+                umovie.cargarCalificaciones("ratings.csv");
+                umovie.cargarParticipantes("credits.csv");
                 //logica de la carga de datos
-                System.out.println("Carga de datos exitosa, tiempo de ejecución de la carga:");
-                //falta agregar tiempo de carga
+                long fin = System.currentTimeMillis();
+                long duracion = fin - inicio;
+                System.out.println("Carga de datos exitosa, tiempo de ejecución de la carga: " + duracion + " milisegundos.");
             } else if (opcion == 2) {
                 boolean salir = false;
                 while (!salir) {//hago el while para q salga de este menu solo si el usuario pone 7

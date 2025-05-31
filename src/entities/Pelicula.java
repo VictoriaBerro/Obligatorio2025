@@ -7,10 +7,10 @@ public class Pelicula {
     private int totalCalificaciones;
     private String[][] generoPelicula;
     private Coleccion perteneceSaga;
-    private int presupuesto;
+    private double presupuesto;
     private String link;
 
-    public Pelicula(String idPelicula, String tituloPelicula, String idiomaOriginal, int totalCalificaciones, String[][] generoPelicula, Coleccion perteneceSaga, int presupuesto, String link) {
+    public Pelicula(String idPelicula, String tituloPelicula, String idiomaOriginal, int totalCalificaciones, String[][] generoPelicula, Coleccion perteneceSaga, double presupuesto, String link) {
         this.idPelicula = idPelicula;
         this.tituloPelicula = tituloPelicula;
         this.idiomaOriginal = idiomaOriginal;

@@ -6,7 +6,13 @@ import Interfaz.UmovieImpl;
 public class Umovie implements UmovieImpl {
     private ListaEnlazada<Pelicula> peliculas = new ListaEnlazada<>();
     private ListaEnlazada<Evaluacion> evaluaciones = new ListaEnlazada<>();
-    private ListaEnlazada<Miembro> Miembros = new ListaEnlazada<>();
+    private ListaEnlazada<Miembro> miembros = new ListaEnlazada<>();
+
+    public Umovie() {
+        this.peliculas = peliculas;
+        this.evaluaciones = evaluaciones;
+        this.miembros = miembros;
+    }
 
     @Override
     public void cargarPeliculas(String rutaCsv) {
