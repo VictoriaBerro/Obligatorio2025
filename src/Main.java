@@ -19,7 +19,7 @@ public class Main {
                 umovie.cargarPeliculas("movies_metadata.csv");
                 umovie.cargarCalificaciones("ratings.csv");
                 umovie.cargarParticipantes("credits.csv");
-                //logica de la carga de datos
+                //hay q hacer q los metodos de carga funcionen ahora :), metele victoria
                 long fin = System.currentTimeMillis();
                 long duracion = fin - inicio;
                 System.out.println("Carga de datos exitosa, tiempo de ejecución de la carga: " + duracion + " milisegundos.");
@@ -34,18 +34,19 @@ public class Main {
                     System.out.println("6. Usuarios con más calificaciones por género");
                     System.out.println("7. Salir");
                     int opcion2 = scanner.nextInt();
-                    if (opcion2 == 1) {
-
+                    if (opcion2 == 1) {//creo q hay q implementar las consultas para q devuelvan strings y hacer
+                        //System.out.pintln(las consultas)
+                        umovie.consulta1();
                     } else if (opcion2 == 2) {
-
+                        umovie.consulta2();
                     } else if (opcion2 == 3) {
-
+                        umovie.consulta3();
                     } else if (opcion2 == 4) {
-
+                        umovie.consulta4();
                     } else if (opcion2 == 5) {
-
+                        umovie.consulta5();
                     } else if (opcion2 == 6) {
-
+                        umovie.consulta6();
                     } else if (opcion2 == 7) {
                         salir = true;
                     }

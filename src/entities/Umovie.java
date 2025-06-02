@@ -1,17 +1,18 @@
 package entities;
 
 import Interfaz.UmovieImpl;
+import LinkedList.LinkedList;
 
 
 public class Umovie implements UmovieImpl {
-    private ListaEnlazada<Pelicula> peliculas = new ListaEnlazada<>();
-    private ListaEnlazada<Evaluacion> evaluaciones = new ListaEnlazada<>();
-    private ListaEnlazada<Miembro> miembros = new ListaEnlazada<>();
+    private LinkedList<Pelicula> peliculas;
+    private LinkedList<Evaluacion> evaluaciones;
+    private LinkedList<Miembro> miembros;
 
     public Umovie() {
-        this.peliculas = peliculas;
-        this.evaluaciones = evaluaciones;
-        this.miembros = miembros;
+        this.peliculas = new LinkedList<Pelicula>();
+        this.evaluaciones = new LinkedList<Evaluacion>();
+        this.miembros = new LinkedList<Miembro>();
     }
 
     @Override

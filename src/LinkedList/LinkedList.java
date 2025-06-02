@@ -1,6 +1,6 @@
 package LinkedList;
 
-public class LinkedList implements Lista {
+public class LinkedList<K> implements Lista {
     private Nodo primero;
     private Nodo ultimo;
     private int size;
