@@ -1,5 +1,4 @@
 package QueueConPrioridad;
-import Util.EmptyQueueException;
 
 public class QueueConPrioridad<T> implements MyQueuePrioridad<T> {
     private NodoPrioridad<T> primero;

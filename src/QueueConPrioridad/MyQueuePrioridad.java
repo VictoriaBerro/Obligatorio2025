@@ -1,6 +1,6 @@
 package QueueConPrioridad;
 
-import Ejercicio1.MyQueue;
+import Queue.MyQueue;
 
 public interface MyQueuePrioridad<T>  extends MyQueue<T> {
 

@@ -1,5 +1,4 @@
 package Queue;
-import Util.EmptyQueueException;
 
 public interface MyQueue <T> {
     void enqueue (T element);
