@@ -104,8 +104,38 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void cargarCalificaciones(String rutaCsv) {
+        InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
+        if (input == null) {
+            System.out.println("❌ No se encontró el archivo " + rutaCsv);
+            return;
+        }
 
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String linea;
+            br.readLine(); // Saltar cabecera
+
+
+            while ((linea = br.readLine()) != null) {
+                String[] campos = linea.split(",");
+                try {
+                    int userId = Integer.parseInt(campos[0].trim());
+                    int movieId = Integer.parseInt(campos[1].trim());
+                    double rating = Double.parseDouble(campos[2].trim());
+                    long timestamp = Long.parseLong(campos[3].trim());
+
+                    Evaluacion evaluacion = new Evaluacion(userId, movieId, rating, timestamp);
+                    evaluaciones.add(evaluacion);
+                } catch (Exception e) {
+                    // Si la línea está mal formada, se ignora
+                }
+            }
+
+        } catch (IOException e) {
+            System.out.println("❌ Error al leer el archivo " + rutaCsv);
+            e.printStackTrace();
+        }
     }
+
 
     @Override
     public void cargarParticipantes(String rutaCsv) {
