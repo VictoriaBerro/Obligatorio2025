@@ -3,7 +3,11 @@ package entities;
 import Interfaz.UmovieImpl;
 import LinkedList.LinkedList;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 
 
@@ -19,8 +23,83 @@ public class Umovie implements UmovieImpl {
     }
 
     @Override
-    public void cargarPeliculas(String rutaCsv)  {
+    public void cargarPeliculas(String rutaCsv) throws IOException {
+        InputStream input = getClass().getClassLoader().getResourceAsStream("movies_metadata.csv");
+        if (input == null) {
+            System.out.println("❌ No se encontró el archivo movies_metadata.csv");
+            return;
+        }
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {//leo linea por linea
+            String linea;
+            br.readLine(); // Saltar la primera fila, no me interesan los nombres de las columnas
 
+            while ((linea = br.readLine()) != null) {
+                String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                //divido en columnas
+
+                if (campos.length > 17) {
+                    try {
+                        // ID
+                        String id = campos[5].trim();
+
+                        // Título
+                        String titulo = campos[17].trim();
+
+                        // Idioma original
+                        String idioma = campos[7].trim();
+                        //el .trim() elimina espacios en blanco
+
+                        // Revenue
+                        int revenue = 0;
+                        try {
+                            revenue = Integer.parseInt(campos[13].trim());
+                        } catch (NumberFormatException e) {
+                            // revenue = 0 por defecto
+                        }
+
+                        // belongs_to_collection (parsear JSON con name)
+                        String coleccionTexto = campos[1].trim();
+                        String coleccion = null;
+                        if (!coleccionTexto.isEmpty()) {
+                            coleccionTexto = coleccionTexto.replace("'", "\"");
+                            try {
+                                JSONObject colJson = new JSONObject(coleccionTexto);
+                                coleccion = colJson.getString("name");
+                            } catch (Exception e) {
+                                // dejar coleccion como null
+                            }
+                        }
+
+                        // genres (JSONArray de objetos con "name")
+                        String generosTexto = campos[3].trim();
+                        String[] generos = new String[0];
+                        if (!generosTexto.isEmpty()) {
+                            generosTexto = generosTexto.replace("'", "\"");
+                            try {
+                                JSONArray generosJson = new JSONArray(generosTexto);
+                                generos = new String[generosJson.length()];
+                                for (int i = 0; i < generosJson.length(); i++) {
+                                    generos[i] = generosJson.getJSONObject(i).getString("name");
+                                }
+                            } catch (Exception e) {
+                                // dejar generos vacío
+                            }
+                        }
+
+                        // Crear objeto Pelicula
+                        Pelicula pelicula = new Pelicula(id, titulo, idioma, coleccion, revenue, generos);
+                        peliculas.add(pelicula);
+
+                    } catch (Exception e) {
+                        // Si esta línea falla, seguir con la siguiente
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error al leer movies_metadata.csv");
+            e.printStackTrace();
+            ;
+        }
     }
 
     @Override

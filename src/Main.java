@@ -1,9 +1,10 @@
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Scanner;
 import entities.Umovie;
 
 public class Main {
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException {
         Scanner scanner = new Scanner(System.in);
         boolean continuar = true;
         Umovie umovie = new Umovie();
@@ -20,7 +21,6 @@ public class Main {
                 umovie.cargarPeliculas("movies_metadata.csv");
                 umovie.cargarCalificaciones("ratings.csv");
                 umovie.cargarParticipantes("credits.csv");
-                //hay q hacer q los metodos de carga funcionen ahora :), metele victoria
                 long fin = System.currentTimeMillis();
                 long duracion = fin - inicio;
                 System.out.println("Carga de datos exitosa, tiempo de ejecución de la carga: " + duracion + " milisegundos.");
