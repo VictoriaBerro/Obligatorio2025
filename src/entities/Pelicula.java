@@ -17,6 +17,7 @@ public class Pelicula {
         this.generos = generos;
     }
 
+
     public String getId() {
         return id;
     }
