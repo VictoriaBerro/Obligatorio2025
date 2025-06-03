@@ -3,10 +3,8 @@ package entities;
 import Interfaz.UmovieImpl;
 import LinkedList.LinkedList;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+
+
 
 
 public class Umovie implements UmovieImpl {
@@ -21,60 +19,8 @@ public class Umovie implements UmovieImpl {
     }
 
     @Override
-    public void cargarPeliculas(String rutaCsv) throws FileNotFoundException {
-        try (BufferedReader br = new BufferedReader(new FileReader(rutaCsv))) {
-            String linea;
-            br.readLine(); // saltar cabecera
+    public void cargarPeliculas(String rutaCsv)  {
 
-            while ((linea = br.readLine()) != null) {
-                String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-
-                if (campos.length > 17) {
-                    try {
-                        String coleccion = campos[1].trim();
-                        if (coleccion.isEmpty()) coleccion = null;
-
-                        String generosTexto = campos[3].trim();
-                        String[] generos = parsearGeneros(generosTexto);
-
-                        String id = campos[5].trim();
-                        String idioma = campos[7].trim();
-                        String titulo = campos[17].trim();
-
-                        int revenue = 0;
-                        try {
-                            revenue = Integer.parseInt(campos[13].trim());
-                        } catch (NumberFormatException e) {
-                            // revenue queda en 0 si no es numérico
-                        }
-
-                        Pelicula pelicula = new Pelicula(id, titulo, idioma, coleccion, revenue, generos);
-                        peliculas.add(pelicula);
-
-                    } catch (Exception e) {
-                        // Salteo línea problemática
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error leyendo movies_metadata.csv");
-            throw new RuntimeException(e);
-        }
-    }
-
-    private String[] parsearGeneros(String texto) {
-        // Ejemplo de entrada: "[{'id': 16, 'name': 'Animation'}, {'id': 35, 'name': 'Comedy'}]"
-        texto = texto.replace("[", "").replace("]", "");
-        String[] partes = texto.split("},");
-        for (int i = 0; i < partes.length; i++) {
-            String[] tokens = partes[i].split("'name':");
-            if (tokens.length > 1) {
-                partes[i] = tokens[1].replace("'", "").replace("}", "").trim();
-            } else {
-                partes[i] = "Desconocido";
-            }
-        }
-        return partes;
     }
 
     @Override
