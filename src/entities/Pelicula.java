@@ -1,55 +1,36 @@
 package entities;
 
 public class Pelicula {
-    private String idPelicula;
-    private String tituloPelicula;
+    private String id;
+    private String titulo;
     private String idiomaOriginal;
-    private int totalCalificaciones;
-    private String[][] generoPelicula;
-    private Coleccion perteneceSaga;
-    private double presupuesto;
-    private String link;
-    private Director director;
+    private String coleccion;  // Puede ser null si no pertenece a ninguna
+    private int revenue;
+    private String[] generos;
 
-    public Pelicula(String idPelicula, String tituloPelicula, String idiomaOriginal, int totalCalificaciones, String[][] generoPelicula, Coleccion perteneceSaga, double presupuesto, String link, Director director) {
-        this.idPelicula = idPelicula;
-        this.tituloPelicula = tituloPelicula;
+    public Pelicula(String id, String titulo, String idiomaOriginal, String coleccion, int revenue, String[] generos) {
+        this.id = id;
+        this.titulo = titulo;
         this.idiomaOriginal = idiomaOriginal;
-        this.totalCalificaciones = totalCalificaciones;
-        this.generoPelicula = generoPelicula;
-        this.perteneceSaga = perteneceSaga;
-        this.presupuesto = presupuesto;
-        this.link = link;
-        this.director = director;
+        this.coleccion = coleccion;
+        this.revenue = revenue;
+        this.generos = generos;
     }
 
-
-    public void setPresupuesto(double presupuesto) {
-        this.presupuesto = presupuesto;
+    public String getId() {
+        return id;
     }
 
-    public Director getDirector() {
-        return director;
+    public void setId(String id) {
+        this.id = id;
     }
 
-    public void setDirector(Director director) {
-        this.director = director;
+    public String getTitulo() {
+        return titulo;
     }
 
-    public String getIdPelicula() {
-        return idPelicula;
-    }
-
-    public void setIdPelicula(String idPelicula) {
-        this.idPelicula = idPelicula;
-    }
-
-    public String getTituloPelicula() {
-        return tituloPelicula;
-    }
-
-    public void setTituloPelicula(String tituloPelicula) {
-        this.tituloPelicula = tituloPelicula;
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
     }
 
     public String getIdiomaOriginal() {
@@ -60,36 +41,32 @@ public class Pelicula {
         this.idiomaOriginal = idiomaOriginal;
     }
 
-    public int getTotalCalificaciones() {
-        return totalCalificaciones;
+    public String getColeccion() {
+        return coleccion;
     }
 
-    public void setTotalCalificaciones(int totalCalificaciones) {
-        this.totalCalificaciones = totalCalificaciones;
+    public void setColeccion(String coleccion) {
+        this.coleccion = coleccion;
     }
 
-    public String[][] getGeneroPelicula() {
-        return generoPelicula;
+    public int getRevenue() {
+        return revenue;
     }
 
-    public void setGeneroPelicula(String[][] generoPelicula) {
-        this.generoPelicula = generoPelicula;
+    public void setRevenue(int revenue) {
+        this.revenue = revenue;
     }
 
-    public Coleccion getPerteneceSaga() {
-        return perteneceSaga;
+    public String[] getGeneros() {
+        return generos;
     }
 
-    public void setPerteneceSaga(Coleccion perteneceSaga) {
-        this.perteneceSaga = perteneceSaga;
+    public void setGeneros(String[] generos) {
+        this.generos = generos;
     }
 
-
-    public String getLink() {
-        return link;
-    }
-
-    public void setLink(String link) {
-        this.link = link;
+    @Override
+    public String toString() {
+        return id + " - " + titulo + " (" + idiomaOriginal + "), Colección: " + coleccion + ", Revenue: " + revenue;
     }
 }

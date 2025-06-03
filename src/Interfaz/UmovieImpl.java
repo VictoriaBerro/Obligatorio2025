@@ -1,7 +1,9 @@
 package Interfaz;
 
+import java.io.FileNotFoundException;
+
 public interface UmovieImpl {
-    void cargarPeliculas(String rutaCsv);
+    void cargarPeliculas(String rutaCsv) throws FileNotFoundException;
     void cargarCalificaciones(String rutaCsv);
     void cargarParticipantes(String rutaCsv);
 
