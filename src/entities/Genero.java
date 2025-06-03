@@ -1,11 +1,8 @@
 package entities;
 
 public enum Genero {
-    ACCION(1, "Acción"),
-    COMEDIA(2, "Comedia"),
-    DRAMA(3, "Drama"),
-    TERROR(4, "Terror"),
-    DOCUMENTAL(5, "Documental"),
+    COMEDY(35, "Comedy"),
+    ANIMATION(16, "Animation"),
 // FALTA PONERLOS BIEN
     ;
 
@@ -31,7 +28,7 @@ public enum Genero {
                 return genero;
             }
         }
-        return null; // o lanzás una excepción si preferís
+        throw new IllegalArgumentException("Género con id " + id + " no está definido en el enum Genero.");
     }
 
     @Override
