@@ -9,8 +9,9 @@ public class Pelicula {
     private Coleccion perteneceSaga;
     private double presupuesto;
     private String link;
+    private Director director;
 
-    public Pelicula(String idPelicula, String tituloPelicula, String idiomaOriginal, int totalCalificaciones, String[][] generoPelicula, Coleccion perteneceSaga, double presupuesto, String link) {
+    public Pelicula(String idPelicula, String tituloPelicula, String idiomaOriginal, int totalCalificaciones, String[][] generoPelicula, Coleccion perteneceSaga, double presupuesto, String link, Director director) {
         this.idPelicula = idPelicula;
         this.tituloPelicula = tituloPelicula;
         this.idiomaOriginal = idiomaOriginal;
@@ -19,6 +20,20 @@ public class Pelicula {
         this.perteneceSaga = perteneceSaga;
         this.presupuesto = presupuesto;
         this.link = link;
+        this.director = director;
+    }
+
+
+    public void setPresupuesto(double presupuesto) {
+        this.presupuesto = presupuesto;
+    }
+
+    public Director getDirector() {
+        return director;
+    }
+
+    public void setDirector(Director director) {
+        this.director = director;
     }
 
     public String getIdPelicula() {
@@ -69,13 +84,6 @@ public class Pelicula {
         this.perteneceSaga = perteneceSaga;
     }
 
-    public int getPresupuesto() {
-        return presupuesto;
-    }
-
-    public void setPresupuesto(int presupuesto) {
-        this.presupuesto = presupuesto;
-    }
 
     public String getLink() {
         return link;
