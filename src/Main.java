@@ -18,8 +18,8 @@ public class Main {
 
             if (opcion == 1) {
                 long inicio = System.currentTimeMillis();
+                umovie.cargarCalificaciones("ratings_1mm.csv");//hay q arreglar el loop de clasificacion
                 umovie.cargarPeliculas("movies_metadata.csv");
-                umovie.cargarCalificaciones("ratings.csv");
                 umovie.cargarParticipantes("credits.csv");
                 long fin = System.currentTimeMillis();
                 long duracion = fin - inicio;
