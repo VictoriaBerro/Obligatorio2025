@@ -31,7 +31,7 @@ public enum Genero {
                 return genero;
             }
         }
-        return null; // o lanzás una excepción si preferís
+        throw new IllegalArgumentException("Género con id " + id + " no está definido en el enum Genero.");
     }
 
     @Override
