@@ -1,13 +1,12 @@
 package entities;
-
-import java.util.List;
+import TADS.Hashmap.HashMap;
 
 public class Credits {
     private int movieId;
-    private List<Actor> cast;
-    private List<Miembro> crew;
+    private HashMap<Integer, Actor> cast;
+    private HashMap<Integer, Miembro> crew;
 
-    public Credits(int movieId, List<Actor> cast, List<Miembro> crew) {
+    public Credits(int movieId, HashMap<Integer, Actor> cast, HashMap<Integer, Miembro> crew) {
         this.movieId = movieId;
         this.cast = cast;
         this.crew = crew;
@@ -21,24 +20,26 @@ public class Credits {
         this.movieId = movieId;
     }
 
-    public List<Actor> getCast() {
+    public HashMap<Integer, Actor> getCast() {
         return cast;
     }
 
-    public void setCast(List<Actor> cast) {
+    public void setCast(HashMap<Integer, Actor> cast) {
         this.cast = cast;
     }
 
-    public List<Miembro> getCrew() {
+    public HashMap<Integer, Miembro> getCrew() {
         return crew;
     }
 
-    public void setCrew(List<Miembro> crew) {
+    public void setCrew(HashMap<Integer, Miembro> crew) {
         this.crew = crew;
     }
 
     @Override
     public String toString() {
-        return "Película ID: " + movieId + "\nCAST:\n" + cast + "\nCREW:\n" + crew;
+        return "Película ID: " + movieId +
+                "\nCAST:\n" + cast.values() +
+                "\nCREW:\n" + crew.values();
     }
 }

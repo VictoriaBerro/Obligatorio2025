@@ -1,32 +1,37 @@
 package entities;
 
 import Interfaz.UmovieImpl;
-import LinkedList.LinkedList;
+
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedList;
+import java.util.Queue;
 
+import TADS.Hashmap.HashMap;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 
 
 public class Umovie implements UmovieImpl {
-    private LinkedList<Pelicula> peliculas;
-    private LinkedList<Evaluacion> evaluaciones;
-    private LinkedList<Miembro> miembros;
+    private HashMap<Integer, Pelicula> peliculas;
+    private HashMap<Integer, Evaluacion> evaluaciones;
+    private HashMap<Integer, Miembro> miembros;
 
     public Umovie() {
-        this.peliculas = new LinkedList<Pelicula>();
-        this.evaluaciones = new LinkedList<Evaluacion>();
-        this.miembros = new LinkedList<Miembro>();
+        this.peliculas = new HashMap<>(100000000);     // Ver el tamańo
+        this.evaluaciones = new HashMap<>(1000000000);
+        this.miembros = new HashMap<>(100000000);
     }
+
+
 
     @Override
     public void cargarPeliculas(String rutaCsv) throws IOException {
         InputStream input = getClass().getClassLoader().getResourceAsStream("movies_metadata.csv");
         if (input == null) {
-            System.out.println("❌ No se encontró el archivo movies_metadata.csv");
+            System.out.println(" No se encontró el archivo movies_metadata.csv");
             return;
         }
         try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {//leo linea por linea
@@ -88,7 +93,8 @@ public class Umovie implements UmovieImpl {
 
                         // Crear objeto Pelicula
                         Pelicula pelicula = new Pelicula(id, titulo, idioma, coleccion, revenue, generos);
-                        peliculas.add(pelicula);
+                        peliculas.put(pelicula.hashCode(),pelicula);
+
 
                     } catch (Exception e) {
                         // Si esta línea falla, seguir con la siguiente
@@ -106,7 +112,7 @@ public class Umovie implements UmovieImpl {
     public void cargarCalificaciones(String rutaCsv) {
         InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
         if (input == null) {
-            System.out.println("❌ No se encontró el archivo " + rutaCsv);
+            System.out.println(" No se encontró el archivo " + rutaCsv);
             return;
         }
 
@@ -124,14 +130,14 @@ public class Umovie implements UmovieImpl {
                     long timestamp = Long.parseLong(campos[3].trim());
 
                     Evaluacion evaluacion = new Evaluacion(userId, movieId, rating, timestamp);
-                    evaluaciones.add(evaluacion);
+                    evaluaciones.put(evaluacion.hashCode(),evaluacion);
                 } catch (Exception e) {
                     // Si la línea está mal formada, se ignora
                 }
             }
 
         } catch (IOException e) {
-            System.out.println("❌ Error al leer el archivo " + rutaCsv);
+            System.out.println(" Error al leer el archivo " + rutaCsv);
             e.printStackTrace();
         }
     }
@@ -143,10 +149,70 @@ public class Umovie implements UmovieImpl {
     }
 
     @Override
-    public void consulta1() {//devuelve id, titulo, total evaluaciones, idioma original de las top 5 con
-        //mas evalucaiones por idioma
-
+    public void consulta1() {
+//        // Paso 1: Calcular total de evaluaciones por película
+//        HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(1000000); // mapa donde la clave es el id de la peli, lo otro es cant de evaluaciones
+//        for (Evaluacion e : evaluaciones) {
+//            int idPelicula = e.getMovieId(); // Recorre todas las evaluaciones para obtener el ID de la película evaluada.
+//            if (evaluacionesPorPelicula.pertenece(idPelicula)) {
+//                int actual = evaluacionesPorPelicula.get(idPelicula);
+//                evaluacionesPorPelicula.insertar(idPelicula, actual + 1);
+//            } else {
+//                evaluacionesPorPelicula.insertar(idPelicula, 1);
+//            }
+//        }
+//
+//        // Paso 2: Agrupar películas por idioma
+//        MyHashMap<String, Queue<Pelicula>> peliculasPorIdioma = new MyHashMap<>(20);
+//        for (int i = 0; i < peliculas.size(); i++) {
+//            Pelicula p = peliculas.get(i);
+//            String idioma = p.getIdiomaOriginal();
+//
+//            if (!peliculasPorIdioma.pertenece(idioma)) {
+//                peliculasPorIdioma.insertar(idioma, new LinkedList<Pelicula>());
+//            }
+//            peliculasPorIdioma.get(idioma).add(p);
+//        }
+//
+//        // Paso 3: Recorrer idiomas y mostrar top 5 por evaluaciones
+//        Lista<String> idiomas = peliculasPorIdioma.keys();
+//        for (int i = 0; i < idiomas.size(); i++) {
+//            String idioma = idiomas.get(i);
+//            Lista<Pelicula> lista = peliculasPorIdioma.get(idioma);
+//
+//            // Convertir a array para ordenamiento
+//            Pelicula[] pelis = new Pelicula[lista.size()];
+//            for (int j = 0; j < lista.size(); j++) {
+//                pelis[j] = lista.get(j);
+//            }
+//
+//            // Ordenar por cantidad de evaluaciones (burbuja simple)
+//            for (int j = 0; j < pelis.length - 1; j++) {
+//                for (int k = 0; k < pelis.length - j - 1; k++) {
+//                    int eval1 = evaluacionesPorPelicula.get(pelis[k].getId());
+//                    int eval2 = evaluacionesPorPelicula.get(pelis[k + 1].getId());
+//                    if (eval1 < eval2) {
+//                        Pelicula temp = pelis[k];
+//                        pelis[k] = pelis[k + 1];
+//                        pelis[k + 1] = temp;
+//                    }
+//                }
+//            }
+//
+//            // Imprimir top 5
+//            System.out.println("Idioma: " + idioma);
+//            for (int j = 0; j < Math.min(5, pelis.length); j++) {
+//                Pelicula p = pelis[j];
+//                int total = evaluacionesPorPelicula.get(p.getId());
+//                System.out.printf("ID: %d, Título: %s, Evaluaciones: %d, Idioma: %s%n",
+//                        p.getId(), p.getTitulo(), total, p.getIdiomaOriginal());
+//            }
+//            System.out.println();
+//        }
     }
+
+
+
 
     @Override
     public void consulta2() {//por idioma, devolver el top 10 peliculas con mejor calificacion media
