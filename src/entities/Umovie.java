@@ -5,6 +5,8 @@ import LinkedList.LinkedList;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -12,21 +14,23 @@ import org.json.JSONArray;
 
 
 public class Umovie implements UmovieImpl {
-    private LinkedList<Pelicula> peliculas;
-    private LinkedList<Evaluacion> evaluaciones;
-    private LinkedList<Miembro> miembros;
+    private HashMap<Integer,Pelicula> peliculas;
+    private Map<Integer, Evaluacion> evaluaciones;
+    private Map<Integer, Credits> creditos;
+
 
     public Umovie() {
-        this.peliculas = new LinkedList<Pelicula>();
-        this.evaluaciones = new LinkedList<Evaluacion>();
-        this.miembros = new LinkedList<Miembro>();
+        //this.peliculas = new Map<idPelicula, Pelicula>();
+        //this.evaluaciones = new Map<idEvaluacion, Evaluacion>();
+        //this.creditos = new Map<idCredito, Miembro>();
     }
 
     @Override
     public void cargarPeliculas(String rutaCsv) throws IOException {
+        HashMap peliculas = new HashMap<Integer, Pelicula>();
         InputStream input = getClass().getClassLoader().getResourceAsStream("movies_metadata.csv");
         if (input == null) {
-            System.out.println("❌ No se encontró el archivo movies_metadata.csv");
+            System.out.println(" No se encontró el archivo movies_metadata.csv");
             return;
         }
         try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {//leo linea por linea
@@ -88,7 +92,7 @@ public class Umovie implements UmovieImpl {
 
                         // Crear objeto Pelicula
                         Pelicula pelicula = new Pelicula(id, titulo, idioma, coleccion, revenue, generos);
-                        peliculas.add(pelicula);
+                        peliculas.put(id, pelicula);//cambiar add por add de hashmap
 
                     } catch (Exception e) {
                         // Si esta línea falla, seguir con la siguiente
@@ -105,42 +109,92 @@ public class Umovie implements UmovieImpl {
     @Override
     public void cargarCalificaciones(String rutaCsv) {
         InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
-        if (input == null) {
-            System.out.println("❌ No se encontró el archivo " + rutaCsv);
-            return;
-        }
+
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String linea;
-            br.readLine(); // Saltar cabecera
 
+            // Saltear cabecera
+            br.readLine();
 
+            // Leer cada línea del archivo
             while ((linea = br.readLine()) != null) {
-                String[] campos = linea.split(",");
+                String[] partes = linea.split(",");
+                System.out.println("Línea leída: " + linea);
+
+
                 try {
-                    int userId = Integer.parseInt(campos[0].trim());
-                    int movieId = Integer.parseInt(campos[1].trim());
-                    double rating = Double.parseDouble(campos[2].trim());
-                    long timestamp = Long.parseLong(campos[3].trim());
+                    int userId = Integer.parseInt(partes[0].trim());
+                    int movieId = Integer.parseInt(partes[1].trim());
+                    double rating = Double.parseDouble(partes[2].trim());
+                    long timestamp = Long.parseLong(partes[3].trim());
 
                     Evaluacion evaluacion = new Evaluacion(userId, movieId, rating, timestamp);
-                    evaluaciones.add(evaluacion);
-                } catch (Exception e) {
-                    // Si la línea está mal formada, se ignora
+                    evaluaciones.put(userId, evaluacion);
+
+                } catch (NumberFormatException e) {
+                    System.out.println("Error al parsear línea: " + linea);
                 }
             }
 
+
         } catch (IOException e) {
-            System.out.println("❌ Error al leer el archivo " + rutaCsv);
+            System.out.println("Error al leer el archivo: " + rutaCsv);
             e.printStackTrace();
         }
     }
 
 
-    @Override
-    public void cargarParticipantes(String rutaCsv) {
 
+    @Override
+    public void cargarCreditos(String rutaCsv) throws IOException {
+        InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String linea;
+            br.readLine(); // Saltar encabezado
+
+            while ((linea = br.readLine()) != null) {
+                String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+
+
+                    try {
+                        String castTexto = campos[0].trim();
+                        String crewTexto = campos[1].trim();
+                        String idTexto = campos[2].trim();
+
+
+                        castTexto = castTexto.replace("'", "\"");
+                        crewTexto = crewTexto.replace("'", "\"");
+
+                        JSONArray castArray = new JSONArray(castTexto);
+                        JSONArray crewArray = new JSONArray(crewTexto);
+                        int id = Integer.parseInt(idTexto);
+
+                        Map<Integer, JSONObject> castMap = new HashMap<>();
+                        for (int i = 0; i < castArray.length(); i++) {
+                            JSONObject actor = castArray.getJSONObject(i);
+                            castMap.put(actor.getInt("id"), actor);
+                        }
+
+                        Map<Integer, JSONObject> crewMap = new HashMap<>();
+                        for (int i = 0; i < crewArray.length(); i++) {
+                            JSONObject miembro = crewArray.getJSONObject(i);
+                            crewMap.put(miembro.getInt("id"), miembro);
+                        }
+
+                        //Credits credito = new Credits(id, castMap, crewMap);
+                        //creditos.put(id, credito);
+
+                    } catch (Exception e) {
+                    }
+
+            }
+        }
     }
+
+
+
 
     @Override
     public void consulta1() {//devuelve id, titulo, total evaluaciones, idioma original de las top 5 con
