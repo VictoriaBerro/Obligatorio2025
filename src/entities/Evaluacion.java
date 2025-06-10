@@ -1,5 +1,7 @@
 package entities;
 
+import java.util.Objects;
+
 public class Evaluacion { //LISTA
     private int userId;
     private int movieId;
@@ -53,5 +55,17 @@ public class Evaluacion { //LISTA
                 ", rating=" + rating +
                 ", timestamp=" + timestamp +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Evaluacion that = (Evaluacion) o;
+        return userId == that.userId && movieId == that.movieId && Double.compare(rating, that.rating) == 0 && timestamp == that.timestamp;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(userId, movieId, rating, timestamp);
     }
 }
