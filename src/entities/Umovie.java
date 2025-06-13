@@ -144,7 +144,7 @@ public class Umovie implements UmovieImpl {
 
 
     @Override
-    public void cargarParticipantes(String rutaCsv) {
+    public void cargarCreditos(String rutaCsv) {
 
     }
 

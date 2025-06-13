@@ -1,14 +1,14 @@
 package entities;
 
-import LinkedList.LinkedList;
+import TADS.list.linked.MyLinkedListImpl;
 
 public class Director {
     String name;
-    LinkedList<Pelicula> peliculas;
+    MyLinkedListImpl<Pelicula> peliculas;
 
 
     public Director(String name) {
         this.name = name;
-        this.peliculas = new LinkedList<Pelicula>();
+        this.peliculas = new MyLinkedListImpl<Pelicula>();
     }
 }

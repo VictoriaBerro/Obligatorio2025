@@ -18,9 +18,9 @@ public class Main {
 
             if (opcion == 1) {
                 long inicio = System.currentTimeMillis();
-                umovie.cargarCalificaciones("ratings_1mm.csv");//hay q arreglar el loop de clasificacion
+                umovie.cargarCreditos("ratings_1mm.csv");//hay q arreglar el loop de clasificacion
                 umovie.cargarPeliculas("movies_metadata.csv");
-                umovie.cargarParticipantes("credits.csv");
+                umovie.cargarCalificaciones("credits.csv");
                 long fin = System.currentTimeMillis();
                 long duracion = fin - inicio;
                 System.out.println("Carga de datos exitosa, tiempo de ejecución de la carga: " + duracion + " milisegundos.");
