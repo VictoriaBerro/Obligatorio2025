@@ -1,5 +1,8 @@
 package entities;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public class Pelicula {
     private String id;
     private String titulo;
@@ -69,5 +72,17 @@ public class Pelicula {
     @Override
     public String toString() {
         return id + " - " + titulo + " (" + idiomaOriginal + "), Colección: " + coleccion + ", Revenue: " + revenue;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Pelicula pelicula = (Pelicula) o;
+        return revenue == pelicula.revenue && Objects.equals(id, pelicula.id) && Objects.equals(titulo, pelicula.titulo) && Objects.equals(idiomaOriginal, pelicula.idiomaOriginal) && Objects.equals(coleccion, pelicula.coleccion) && Objects.deepEquals(generos, pelicula.generos);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, titulo, idiomaOriginal, coleccion, revenue, Arrays.hashCode(generos));
     }
 }
