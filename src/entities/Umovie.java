@@ -8,17 +8,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import TADS.Hashmap.HashMap;
 import TADS.exceptions.ListOutOfIndex;
 import TADS.list.linked.MyLinkedListImpl;
 
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.opencsv.CSVReader;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -26,11 +23,12 @@ import org.json.JSONObject;
 public class Umovie implements UmovieImpl {
     private HashMap<Integer, Pelicula> peliculas;
     private HashMap<Integer, Evaluacion> evaluaciones;
-    private HashMap<String,Director> directores;
-    private HashMap<String,Actor> actores;
+    private HashMap<String, Director> directores;
+    private HashMap<String, Actor> actores;
     private Map<String,String> generos = new java.util.HashMap<String,String>();
     private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
+    private HashMap<Integer, Creditos> creditos;
 
     public Umovie() {
         this.peliculas = new HashMap<>(1000000);   // Ver el tamańo
@@ -160,99 +158,105 @@ public class Umovie implements UmovieImpl {
         }
     }
 
+    private static HashMap<String, String> parsearObjeto(String texto) {
+        HashMap<String, String> mapa = new HashMap<>(10000);
+        Matcher m = Pattern.compile("'(\\w+)'\\s*:\\s*'?(.*?)'?(,|$)").matcher(texto);
+        while (m.find()) {
+            mapa.put(m.group(1), m.group(2));
+        }
+        return mapa;
+    }
+
     @Override
-    public void cargarCreditos(String rutaArchivo) {
-        try (CSVReader reader = new CSVReader(new FileReader(rutaArchivo))) {
-            String[] linea;
-            boolean primeraLinea = true;
-            Gson gson = new Gson();
+    public void cargarCreditos(String rutaCsv) {
+        HashMap<Integer, Creditos> mapaCreditos = new HashMap<>(100000);
+        InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
 
-            while ((linea = reader.readNext()) != null) {
-                if (primeraLinea) { primeraLinea = false; continue; }
-                if (linea.length < 3) continue;
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String linea;
+            br.readLine(); // Saltar cabecera
 
-                String castJson = limpiarYConvertirJson(linea[0].trim());
-                String crewJson = limpiarYConvertirJson(linea[1].trim());
-                String movieId  = linea[2].trim();
+            int contador = 0; // Contador de créditos cargados
 
-                // Actores
+            while ((linea = br.readLine()) != null) {
                 try {
-                    JsonArray castArray = gson.fromJson(castJson, JsonArray.class);
-                    for (int i = 0; i < castArray.size(); i++) {
-                        JsonObject actorJson = castArray.get(i).getAsJsonObject();
+                    int ultimaCierre = linea.lastIndexOf("]");
+                    int penultimaCierre = linea.lastIndexOf("]", ultimaCierre - 1);
 
-                        String actorId = obtenerValorString(actorJson, "id", null);
-                        String nombre = obtenerValorString(actorJson, "name", null);
-                        int gender = obtenerValorInt(actorJson, "gender", 0);
-                        String personaje = obtenerValorString(actorJson, "character", "Desconocido");
-
-                        if (actorId == null || nombre == null) continue;
-
-                        if (!actores.containsKey(actorId)) {
-                            actores.put(actorId, new Actor(gender, actorId, nombre));
-                        }
-                        actores.get(actorId).agregarPelicula(movieId, personaje);
+                    if (ultimaCierre == -1 || penultimaCierre == -1) {
+                        System.err.println("❗ Línea mal formada, se saltea: " + linea);
+                        continue;
                     }
-                } catch (Exception ignored) {}
 
-                // Directores
-                try {
-                    JsonArray crewArray = gson.fromJson(crewJson, JsonArray.class);
-                    for (int i = 0; i < crewArray.size(); i++) {
-                        JsonObject crewJsonObj = crewArray.get(i).getAsJsonObject();
+                    String castJson = linea.substring(0, penultimaCierre + 1);
+                    String crewJson = linea.substring(penultimaCierre + 1, ultimaCierre + 1);
+                    String resto = linea.substring(ultimaCierre + 1).trim();
 
-                        String departamento = obtenerValorString(crewJsonObj, "department", null);
-                        String job = obtenerValorString(crewJsonObj, "job", null);
-
-                        if (!"Directing".equalsIgnoreCase(departamento) || !"Director".equalsIgnoreCase(job)) continue;
-
-                        String directorId = obtenerValorString(crewJsonObj, "id", null);
-                        String nombre = obtenerValorString(crewJsonObj, "name", null);
-                        int gender = obtenerValorInt(crewJsonObj, "gender", 0);
-
-                        if (directorId == null || nombre == null) continue;
-
-                        if (!directores.containsKey(directorId)) {
-                            directores.put(directorId, new Director(directorId, nombre, gender));
-                        }
-                        directores.get(directorId).agregarPelicula(movieId, "Director");
+                    // Limpiar el ID (puede venir como ",862" o similar)
+                    String movieIdStr = resto.replaceAll("[^0-9]", "");
+                    if (movieIdStr.isEmpty()) {
+                        System.err.println("❗ ID vacío en línea: " + linea);
+                        continue;
                     }
-                } catch (Exception ignored) {}
+
+                    int movieId = Integer.parseInt(movieIdStr);
+
+                    HashMap<Integer, Cast> mapaCast = new HashMap<>(40);
+                    HashMap<Integer, Crew> mapaCrew = new HashMap<>(40);
+
+                    Matcher castMatcher = Pattern.compile("\\{(.*?)\\}").matcher(castJson);
+                    while (castMatcher.find()) {
+                        String obj = castMatcher.group(1);
+                        HashMap<String, String> datos = parsearObjeto(obj);
+                        Cast c = new Cast(
+                                Integer.parseInt(datos.get("cast_id")),
+                                datos.get("character"),
+                                datos.get("credit_id"),
+                                Integer.parseInt(datos.get("gender")),
+                                Integer.parseInt(datos.get("id")),
+                                datos.get("name"),
+                                Integer.parseInt(datos.get("order")),
+                                datos.get("profile_path")
+                        );
+                        mapaCast.put(c.getId(), c);
+                    }
+
+                    Matcher crewMatcher = Pattern.compile("\\{(.*?)\\}").matcher(crewJson);
+                    while (crewMatcher.find()) {
+                        String obj = crewMatcher.group(1);
+                        HashMap<String, String> datos = parsearObjeto(obj);
+                        Crew c = new Crew(
+                                datos.get("credit_id"),
+                                datos.get("department"),
+                                Integer.parseInt(datos.get("gender")),
+                                Integer.parseInt(datos.get("id")),
+                                datos.get("job"),
+                                datos.get("name"),
+                                datos.get("profile_path")
+                        );
+                        mapaCrew.put(c.getId(), c);
+                    }
+
+                    Creditos creditos = new Creditos(movieId, mapaCast, mapaCrew);
+                    mapaCreditos.put(movieId, creditos);
+                    contador++;
+
+                } catch (Exception e) {
+                    System.err.println("⚠️ Error procesando línea, se omite:");
+                    System.err.println(linea);
+                    e.printStackTrace();
+                }
             }
 
-            return;
+            System.out.println("✅ Créditos cargados correctamente: " + contador);
+
         } catch (Exception e) {
-            System.err.println("Error al cargar créditos: " + e.getMessage());
-            return ;
+            System.err.println("❌ Error leyendo el archivo:");
+            e.printStackTrace();
         }
+
+        this.creditos = mapaCreditos;
     }
-
-
-
-
-    private static String limpiarYConvertirJson(String input) {
-        if (input == null || input.trim().isEmpty() || input.trim().equals("null")) return "[]";
-        String json = input.trim();
-        json = json.replaceAll("([{|,])\\s*'([^']+)':", "$1\"$2\":"); // claves
-        json = json.replaceAll("'([^']*)'", "\"$1\""); // valores string
-        json = json.replace("None", "null");
-        return json;
-    }
-
-    private static String obtenerValorString(JsonObject json, String clave, String valorPorDefecto) {
-        try {
-            return json.has(clave) && !json.get(clave).isJsonNull() ? json.get(clave).getAsString() : valorPorDefecto;
-        } catch (Exception e) { return valorPorDefecto; }
-    }
-
-    private static int obtenerValorInt(JsonObject json, String clave, int valorPorDefecto) {
-        try {
-            return json.has(clave) && !json.get(clave).isJsonNull() ? json.get(clave).getAsInt() : valorPorDefecto;
-        } catch (Exception e) {
-            return valorPorDefecto;
-        }
-    }
-
 
 
 

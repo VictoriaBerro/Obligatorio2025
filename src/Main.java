@@ -1,6 +1,7 @@
+import entities.Umovie;
+
 import java.io.IOException;
 import java.util.Scanner;
-import entities.Umovie;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -28,7 +29,7 @@ public class Main {
                 try {
                     umovie.cargarPeliculas("movies_metadata.csv");
                     umovie.cargarCalificaciones("ratings_1mm.csv"); // corregido
-                    umovie.cargarCreditos("credits.csv"); // corregido
+                   // umovie.cargarCreditos("credits.csv"); // corregido
                     long fin = System.currentTimeMillis();
                     long duracion = fin - inicio;
                     System.out.println("✔️ Carga de datos exitosa. Tiempo: " + duracion + " milisegundos.");
