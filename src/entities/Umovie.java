@@ -14,6 +14,9 @@ import TADS.exceptions.ListOutOfIndex;
 import TADS.list.linked.MyLinkedListImpl;
 import org.json.JSONObject;
 import org.json.JSONArray;
+import com.opencsv.CSVReader;
+
+
 
 
 
@@ -155,88 +158,79 @@ public class Umovie implements UmovieImpl {
         }
     }
 
+    public static boolean cargarCredits(String rutaArchivo) {
+        try (CSVReader reader = new CSVReader(new FileReader(rutaArchivo))) {
+            String[] linea;
+            boolean primeraLinea = true;
 
-    @Override
-    public void cargarCreditos(String rutaCsv) {
-        InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
-        if (input == null) {
-            System.out.println("No se encontró el archivo " + rutaCsv);
-            return;
-        }
+            while ((linea = reader.readNext()) != null) {
+                if (primeraLinea) { primeraLinea = false; continue; }
+                if (linea.length < 3) continue;
 
-        actoresConPeliculas = new HashMap<>(100000);
-        directoresConPeliculas = new HashMap<>(100000);
+                // Recuerda: cast = [0], crew = [1], movieId = [2]
+                String castJson = limpiarYConvertirJson(linea[0].trim());
+                String crewJson = limpiarYConvertirJson(linea[1].trim());
+                String movieId  = linea[2].trim();
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
-            String linea;
-            br.readLine(); // Saltar cabecera
-
-            while ((linea = br.readLine()) != null) {
-                String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                if (campos.length < 3) continue;
-
-                String idStr = campos[0].trim();
-                int idPelicula;
+                // Actores
                 try {
-                    idPelicula = Integer.parseInt(idStr);
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-
-                if (!peliculas.containsKey(idPelicula)) continue;
-
-                // --- Actores ---
-                String castStr = campos[1].trim();
-                if (!castStr.isEmpty()) {
-                    try {
-                        castStr = castStr.replace("'", "\"");
-                        JSONArray castJson = new JSONArray(castStr);
-                        for (int i = 0; i < castJson.length(); i++) {
-                            JSONObject actorJson = castJson.getJSONObject(i);
-                            if (actorJson.has("name")) {
-                                String nombreActor = actorJson.getString("name");
-
-                                if (!actoresConPeliculas.containsKey(nombreActor)) {
-                                    actoresConPeliculas.put(nombreActor, new MyLinkedListImpl<>());
-                                }
-
-                                actoresConPeliculas.get(nombreActor).add(String.valueOf(idPelicula));
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.out.println("❌ Error al parsear cast: " + castStr);
+                    JsonArray castArray = gson.fromJson(castJson, JsonArray.class);
+                    for (int i = 0; i < castArray.size(); i++) {
+                        JsonObject actorJson = castArray.get(i).getAsJsonObject();
+                        String actorId = obtenerValorString(actorJson, "id", null);
+                        String nombre = obtenerValorString(actorJson, "name", null);
+                        int gender = obtenerValorInt(actorJson, "gender", 0);
+                        String personaje = obtenerValorString(actorJson, "character", "Desconocido");
+                        if (actorId == null || nombre == null) continue;
+                        if (!actores.containsKey(actorId))
+                            actores.put(actorId, new Actor(actorId, nombre, gender));
+                        actores.get(actorId).agregarPelicula(movieId, personaje);
                     }
-                }
+                } catch (Exception ignored) {}
 
-                // --- Directores ---
-                String crewStr = campos[2].trim();
-                if (!crewStr.isEmpty()) {
-                    try {
-                        crewStr = crewStr.replace("'", "\"");
-                        JSONArray crewJson = new JSONArray(crewStr);
-                        for (int i = 0; i < crewJson.length(); i++) {
-                            JSONObject crewJsonObj = crewJson.getJSONObject(i);
-                            if (crewJsonObj.has("job") && crewJsonObj.getString("job").equals("Director") && crewJsonObj.has("name")) {
-                                String nombreDirector = crewJsonObj.getString("name");
-
-                                if (!directoresConPeliculas.containsKey(nombreDirector)) {
-                                    directoresConPeliculas.put(nombreDirector, new MyLinkedListImpl<>());
-                                }
-
-                                directoresConPeliculas.get(nombreDirector).add(String.valueOf(idPelicula));
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.out.println("❌ Error al parsear crew: " + crewStr);
+                // Directores (solo department=Directing y job=Director)
+                try {
+                    JsonArray crewArray = gson.fromJson(crewJson, JsonArray.class);
+                    for (int i = 0; i < crewArray.size(); i++) {
+                        JsonObject crewJsonObj = crewArray.get(i).getAsJsonObject();
+                        String departamento = obtenerValorString(crewJsonObj, "department", null);
+                        String job = obtenerValorString(crewJsonObj, "job", null);
+                        if (!"Directing".equalsIgnoreCase(departamento) || !"Director".equalsIgnoreCase(job)) continue;
+                        String directorId = obtenerValorString(crewJsonObj, "id", null);
+                        String nombre = obtenerValorString(crewJsonObj, "name", null);
+                        int gender = obtenerValorInt(crewJsonObj, "gender", 0);
+                        if (directorId == null || nombre == null) continue;
+                        if (!directores.containsKey(directorId))
+                            directores.put(directorId, new Director(directorId, nombre, gender));
+                        directores.get(directorId).agregarPelicula(movieId, "Director");
                     }
-                }
+                } catch (Exception ignored) {}
             }
-
-        } catch (IOException e) {
-            System.out.println("Error al leer el archivo " + rutaCsv);
-            e.printStackTrace();
+            return true;
+        } catch (Exception e) {
+            System.err.println("Error al cargar créditos: " + e.getMessage());
+            return false;
         }
     }
+
+
+
+
+    private static String limpiarYConvertirJson(String input) {
+        if (input == null || input.trim().isEmpty() || input.trim().equals("null")) return "[]";
+        String json = input.trim();
+        json = json.replaceAll("([{|,])\\s*'([^']+)':", "$1\"$2\":"); // claves
+        json = json.replaceAll("'([^']*)'", "\"$1\""); // valores string
+        json = json.replace("None", "null");
+        return json;
+    }
+
+    private static String obtenerValorString(JsonObject json, String clave, String valorPorDefecto) {
+        try {
+            return json.has(clave) && !json.get(clave).isJsonNull() ? json.get(clave).getAsString() : valorPorDefecto;
+        } catch (Exception e) { return valorPorDefecto; }
+    }
+
 
 
 
