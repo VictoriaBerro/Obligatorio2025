@@ -12,19 +12,22 @@ import java.util.Queue;
 import TADS.Hashmap.HashMap;
 import TADS.exceptions.ListOutOfIndex;
 import TADS.list.linked.MyLinkedListImpl;
-import org.json.JSONObject;
-import org.json.JSONArray;
+
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.opencsv.CSVReader;
-
-
-
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 
 public class Umovie implements UmovieImpl {
     private HashMap<Integer, Pelicula> peliculas;
     private HashMap<Integer, Evaluacion> evaluaciones;
-    private HashMap<Integer,Director> directores;
-    private HashMap<Integer,Actor> actors;
+    private HashMap<String,Director> directores;
+    private HashMap<String,Actor> actores;
     private Map<String,String> generos = new java.util.HashMap<String,String>();
     private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
@@ -33,7 +36,6 @@ public class Umovie implements UmovieImpl {
         this.peliculas = new HashMap<>(1000000);   // Ver el tamańo
         this.evaluaciones = new HashMap<>(1000000);
     }
-
 
 
     @Override
@@ -158,16 +160,17 @@ public class Umovie implements UmovieImpl {
         }
     }
 
-    public static boolean cargarCredits(String rutaArchivo) {
+    @Override
+    public void cargarCreditos(String rutaArchivo) {
         try (CSVReader reader = new CSVReader(new FileReader(rutaArchivo))) {
             String[] linea;
             boolean primeraLinea = true;
+            Gson gson = new Gson();
 
             while ((linea = reader.readNext()) != null) {
                 if (primeraLinea) { primeraLinea = false; continue; }
                 if (linea.length < 3) continue;
 
-                // Recuerda: cast = [0], crew = [1], movieId = [2]
                 String castJson = limpiarYConvertirJson(linea[0].trim());
                 String crewJson = limpiarYConvertirJson(linea[1].trim());
                 String movieId  = linea[2].trim();
@@ -177,39 +180,50 @@ public class Umovie implements UmovieImpl {
                     JsonArray castArray = gson.fromJson(castJson, JsonArray.class);
                     for (int i = 0; i < castArray.size(); i++) {
                         JsonObject actorJson = castArray.get(i).getAsJsonObject();
+
                         String actorId = obtenerValorString(actorJson, "id", null);
                         String nombre = obtenerValorString(actorJson, "name", null);
                         int gender = obtenerValorInt(actorJson, "gender", 0);
                         String personaje = obtenerValorString(actorJson, "character", "Desconocido");
+
                         if (actorId == null || nombre == null) continue;
-                        if (!actores.containsKey(actorId))
-                            actores.put(actorId, new Actor(actorId, nombre, gender));
+
+                        if (!actores.containsKey(actorId)) {
+                            actores.put(actorId, new Actor(gender, actorId, nombre));
+                        }
                         actores.get(actorId).agregarPelicula(movieId, personaje);
                     }
                 } catch (Exception ignored) {}
 
-                // Directores (solo department=Directing y job=Director)
+                // Directores
                 try {
                     JsonArray crewArray = gson.fromJson(crewJson, JsonArray.class);
                     for (int i = 0; i < crewArray.size(); i++) {
                         JsonObject crewJsonObj = crewArray.get(i).getAsJsonObject();
+
                         String departamento = obtenerValorString(crewJsonObj, "department", null);
                         String job = obtenerValorString(crewJsonObj, "job", null);
+
                         if (!"Directing".equalsIgnoreCase(departamento) || !"Director".equalsIgnoreCase(job)) continue;
+
                         String directorId = obtenerValorString(crewJsonObj, "id", null);
                         String nombre = obtenerValorString(crewJsonObj, "name", null);
                         int gender = obtenerValorInt(crewJsonObj, "gender", 0);
+
                         if (directorId == null || nombre == null) continue;
-                        if (!directores.containsKey(directorId))
+
+                        if (!directores.containsKey(directorId)) {
                             directores.put(directorId, new Director(directorId, nombre, gender));
+                        }
                         directores.get(directorId).agregarPelicula(movieId, "Director");
                     }
                 } catch (Exception ignored) {}
             }
-            return true;
+
+            return;
         } catch (Exception e) {
             System.err.println("Error al cargar créditos: " + e.getMessage());
-            return false;
+            return ;
         }
     }
 
@@ -229,6 +243,14 @@ public class Umovie implements UmovieImpl {
         try {
             return json.has(clave) && !json.get(clave).isJsonNull() ? json.get(clave).getAsString() : valorPorDefecto;
         } catch (Exception e) { return valorPorDefecto; }
+    }
+
+    private static int obtenerValorInt(JsonObject json, String clave, int valorPorDefecto) {
+        try {
+            return json.has(clave) && !json.get(clave).isJsonNull() ? json.get(clave).getAsInt() : valorPorDefecto;
+        } catch (Exception e) {
+            return valorPorDefecto;
+        }
     }
 
 
