@@ -9,6 +9,8 @@ public class Actor {
     private String name;
     private int order;
     private String profile_path;
+    private int[] evaluacionesMensuales;
+
 
     public Actor(int cast_id, String character, String credit_id, int gender, int id, String name, int order, String profile_path) {
         this.cast_id = cast_id;
@@ -19,6 +21,7 @@ public class Actor {
         this.name = name;
         this.order = order;
         this.profile_path = profile_path;
+        this.evaluacionesMensuales = new int[12];
     }
 
     public int getCast_id() {
