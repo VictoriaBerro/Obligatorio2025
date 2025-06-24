@@ -1,3 +1,5 @@
+import entities.Evaluacion;
+import entities.Pelicula;
 import entities.Umovie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,45 +19,47 @@ class UmovieTest {
         sistema = new Umovie();
 
         // Simulamos películas en español e inglés
-        sistema.peliculas = new HashMap<>();
-        sistema.peliculas.put(1, new Pelicula("1", "Pelicula A", "es"));
-        sistema.peliculas.put(2, new Pelicula("2", "Pelicula B", "es"));
-        sistema.peliculas.put(3, new Pelicula("3", "Pelicula C", "en"));
+        TADS.Hashmap.HashMap<Integer, Pelicula> pelis = new TADS.Hashmap.HashMap<>(1000);
+        pelis.put(1, new Pelicula("1", "Pelicula A", "es", null, 0, new String[]{}));
+        pelis.put(2, new Pelicula("2", "Pelicula B", "es", null, 0, new String[]{}));
+        pelis.put(3, new Pelicula("3", "Pelicula C", "en", null, 0, new String[]{}));
+        sistema.setPeliculas(pelis);
 
         // Simulamos evaluaciones
-        sistema.evaluaciones = new HashMap<>();
-        sistema.evaluaciones.put(1, new Evaluacion(1, 4.5));
-        sistema.evaluaciones.put(2, new Evaluacion(1, 4.0));
-        sistema.evaluaciones.put(3, new Evaluacion(2, 3.5));
-        sistema.evaluaciones.put(4, new Evaluacion(3, 5.0));
-        sistema.evaluaciones.put(5, new Evaluacion(3, 3.0));
-        sistema.evaluaciones.put(6, new Evaluacion(3, 2.0));
+        TADS.Hashmap.HashMap<Integer, Evaluacion> evals = new TADS.Hashmap.HashMap<>(1000);
+        evals.put(1, new Evaluacion(101, 1, 4.5, 0));
+        evals.put(2, new Evaluacion(102, 1, 4.0, 0));
+        evals.put(3, new Evaluacion(103, 2, 3.5, 0));
+        evals.put(4, new Evaluacion(104, 3, 5.0, 0));
+        evals.put(5, new Evaluacion(105, 3, 3.0, 0));
+        evals.put(6, new Evaluacion(106, 3, 2.0, 0));
+        sistema.setEvaluaciones(evals);
     }
 
     @Test
     void testConsulta1() {
         // Capturar salida de consola
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
         System.setOut(new PrintStream(salida));
 
         sistema.consulta1();
 
+        // Restaurar System.out
+        System.setOut(originalOut);
+
         String output = salida.toString();
 
-        // Validaciones básicas
+        // Verificaciones mínimas
         assertTrue(output.contains("Idioma: es"));
         assertTrue(output.contains("Idioma: en"));
         assertTrue(output.contains("Pelicula A"));
+        assertTrue(output.contains("Pelicula B"));
         assertTrue(output.contains("Pelicula C"));
 
-        // Verifica orden correcto (Pelicula C tiene más evaluaciones que B o A)
+        // Validación de orden: Pelicula C debería aparecer antes que A
         int indexC = output.indexOf("Pelicula C");
         int indexA = output.indexOf("Pelicula A");
-        int indexB = output.indexOf("Pelicula B");
-
-        assertTrue(indexC < indexA || indexC < indexB); // P. C debería estar arriba
-
-        // Restaurar System.out
-        System.setOut(System.out);
+        assertTrue(indexC < indexA);
     }
 }

@@ -34,6 +34,13 @@ public class Umovie implements UmovieImpl {
         this.peliculas = new HashMap<>(1000000);   // Ver el tamańo
         this.evaluaciones = new HashMap<>(1000000);
     }
+    public void setPeliculas(HashMap<Integer, Pelicula> peliculas) {
+        this.peliculas = peliculas;
+    }
+
+    public void setEvaluaciones(HashMap<Integer, Evaluacion> evaluaciones) {
+        this.evaluaciones = evaluaciones;
+    }
 
 
     @Override
@@ -334,7 +341,7 @@ public class Umovie implements UmovieImpl {
             Pelicula p = pelis[j];
             int total = evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) != null ? evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) : 0;
 
-            System.out.printf("ID: %d, Título: %s, Evaluaciones: %d, Idioma: %s%n",
+            System.out.printf("ID: %s, Título: %s, Evaluaciones: %d, Idioma: %s%n",
                     p.getId(), p.getTitulo(), total, p.getIdiomaOriginal());
         }
 

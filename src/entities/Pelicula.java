@@ -21,6 +21,7 @@ public class Pelicula {
     }
 
 
+
     public String getId() {
         return id;
     }
