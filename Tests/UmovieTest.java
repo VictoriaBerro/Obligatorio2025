@@ -37,29 +37,115 @@ class UmovieTest {
     }
 
     @Test
-    void testConsulta1() {
-        // Capturar salida de consola
+    void testConsulta1FormatoYContenido() {
+        // Capturar la salida estándar
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         PrintStream originalOut = System.out;
         System.setOut(new PrintStream(salida));
 
         sistema.consulta1();
 
-        // Restaurar System.out
+        // Restaurar salida original
         System.setOut(originalOut);
 
+        String output = salida.toString().trim();
+
+        // ✅ Verifica que contiene los idiomas esperados
+        assertTrue(output.contains("es"));
+        assertTrue(output.contains("en"));
+        assertTrue(output.contains("fr"));
+        assertTrue(output.contains("it"));
+        assertTrue(output.contains("pt"));
+
+        // ❌ Verifica que NO contiene zh
+        assertFalse(output.contains("zh"));
+
+        // ✅ Verifica formato esperado
+        assertTrue(output.contains("1,Pelicula A,2,es"));
+        assertTrue(output.contains("2,Pelicula B,1,es"));
+        assertTrue(output.contains("3,Pelicula C,1,en"));
+
+        // ✅ Verifica que imprime el tiempo al final
+        assertTrue(output.matches("(?s).*Tiempo de ejecución de la consulta: \\d+ ms$"));
+    }
+
+    @Test
+    public void testConsulta2() {
+        Umovie sistema = new Umovie();
+
+        // Crear películas en distintos idiomas
+        Pelicula p1 = new Pelicula("1", "Pelicula A", "en", "", 0, new String[0]);
+        Pelicula p2 = new Pelicula("2", "Pelicula B", "es", "", 0, new String[0]);
+        Pelicula p3 = new Pelicula("3", "Pelicula C", "fr", "", 0, new String[0]);
+        sistema.getPeliculas().put(1, p1);
+        sistema.getPeliculas().put(2, p2);
+        sistema.getPeliculas().put(3, p3);
+
+        // Agregar evaluaciones:
+        // P1 → 150 evaluaciones de 5.0 (promedio: 5.0)
+        for (int i = 0; i < 150; i++) {
+            sistema.getEvaluaciones().put(i, new Evaluacion(i, 1, 5.0, 0));
+        }
+
+        // P2 → 80 evaluaciones de 3.0 (debe ser ignorada)
+        for (int i = 150; i < 230; i++) {
+            sistema.getEvaluaciones().put(i, new Evaluacion(i, 2, 3.0, 0));
+        }
+
+        // P3 → 120 evaluaciones de 4.0 (promedio: 4.0)
+        for (int i = 230; i < 350; i++) {
+            sistema.getEvaluaciones().put(i, new Evaluacion(i, 3, 4.0, 0));
+        }
+
+        // Capturar salida estándar
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(salida));
+
+        sistema.consulta2();
+
+        System.setOut(originalOut);
+        String output = salida.toString().trim();
+
+        // Validaciones
+        assertTrue(output.contains("ID: 1, Título: Pelicula A, Promedio: 5.00"));
+        assertTrue(output.contains("ID: 3, Título: Pelicula C, Promedio: 4.00"));
+        assertFalse(output.contains("Pelicula B")); // Debe quedar fuera
+
+        // Confirmar que se imprimió tiempo de ejecución
+        assertTrue(output.matches("(?s).*Tiempo de ejecución de la consulta: \\d+ ms$"));
+    }
+
+    @Test
+    public void testConsulta3() {
+
+        // Agrego películas manualmente al hashmap
+        sistema.getPeliculas().put(1, new Pelicula("1", "Iron Man", "en", "Marvel", 500000, new String[]{"Acción"}));
+        sistema.getPeliculas().put(2, new Pelicula("2", "Iron Man 2", "en", "Marvel", 600000, new String[]{"Acción"}));
+        sistema.getPeliculas().put(3, new Pelicula("3", "Avengers", "en", "Marvel", 800000, new String[]{"Acción"}));
+        sistema.getPeliculas().put(4, new Pelicula("4", "Toy Story", "en", "Pixar", 400000, new String[]{"Animación"}));
+        sistema.getPeliculas().put(5, new Pelicula("5", "Película suelta", "en", "", 700000, new String[]{"Drama"}));
+        sistema.getPeliculas().put(6, new Pelicula("6", "Star Wars", "en", "Star Wars", 900000, new String[]{"Sci-Fi"}));
+
+        // Capturar salida
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(salida));
+
+        sistema.consulta3();
+
+        System.setOut(originalOut);
         String output = salida.toString();
 
-        // Verificaciones mínimas
-        assertTrue(output.contains("Idioma: es"));
-        assertTrue(output.contains("Idioma: en"));
-        assertTrue(output.contains("Pelicula A"));
-        assertTrue(output.contains("Pelicula B"));
-        assertTrue(output.contains("Pelicula C"));
+        // Verificaciones
+        assertTrue(output.contains("Saga: Marvel"));
+        assertTrue(output.contains("Saga: Pixar"));
+        assertTrue(output.contains("Saga: Película suelta")); // si cumple con la corrección
+        assertTrue(output.contains("Saga: Star Wars"));
+        assertTrue(output.contains("Ingresos generados: $")); // algún total
 
-        // Validación de orden: Pelicula C debería aparecer antes que A
-        int indexC = output.indexOf("Pelicula C");
-        int indexA = output.indexOf("Pelicula A");
-        assertTrue(indexC < indexA);
+        // Podés agregar más checks si querés verificar cantidades o IDs exactos
     }
+
+
 }

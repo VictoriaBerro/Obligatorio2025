@@ -30,6 +30,7 @@ public class Umovie implements UmovieImpl {
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
     private HashMap<Integer, Creditos> creditos;
 
+
     public Umovie() {
         this.peliculas = new HashMap<>(1000000);   // Ver el tamańo
         this.evaluaciones = new HashMap<>(1000000);
@@ -42,6 +43,13 @@ public class Umovie implements UmovieImpl {
         this.evaluaciones = evaluaciones;
     }
 
+    public HashMap<Integer, Pelicula> getPeliculas() {
+        return peliculas;
+    }
+
+    public HashMap<Integer, Evaluacion> getEvaluaciones() {
+        return evaluaciones;
+    }
 
     @Override
     public void cargarPeliculas(String rutaCsv) throws IOException {
@@ -269,8 +277,20 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta1() {
+//La función analiza un conjunto de películas y sus evaluaciones, agrupándolas por idioma,
+// y para cada idioma muestra las 5 películas más evaluadas (con mayor cantidad de calificaciones).
+// Finalmente, imprime el tiempo total que tardó en hacer ese procesamiento.
+
+        //Cuenta cuántas veces fue evaluada cada película.
+        //Agrupa las películas por su idioma original.
+        //Para cada idioma: Ordena las películas de ese idioma por cantidad de evaluaciones (de mayor a menor).
+        //Muestra hasta 5 películas con más evaluaciones, en formato: id,título,totalEvaluaciones,idioma.
+        //Imprime cuánto tiempo tomó ejecutar la consulta.
+
+
+        long inicio = System.currentTimeMillis(); // ⏱ Inicio del tiempo
 //        // Paso 1: Calcular total de evaluaciones por película
-        HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(1000000); // mapa donde la clave es el id de la peli, lo otro es cant de evaluaciones
+        HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(10000); // mapa donde la clave es el id de la peli, lo otro es cant de evaluaciones
 
         for (Evaluacion e : evaluaciones.values()) { //Es como si dijeras: "dame solo las evaluaciones, no me importa la clave del mapa".
             int idPelicula = e.getMovieId(); // Obtenemos el ID de la película evaluada
@@ -284,7 +304,7 @@ public class Umovie implements UmovieImpl {
         }
 
         // Paso 2: Agrupar películas por idioma
-        HashMap<String, Queue<Pelicula>> peliculasPorIdioma = new HashMap<>(10000000); //clave es el idioma original de la película y  y el valor es una cola (LinkedList) con todas las películas que tienen ese idioma.
+        HashMap<String, Queue<Pelicula>> peliculasPorIdioma = new HashMap<>(10000); //clave es el idioma original de la película y  y el valor es una cola (LinkedList) con todas las películas que tienen ese idioma.
 
         // Recorremos todas las películas del hashmap (solo los valores)
         for (Pelicula p : peliculas.values()) {
@@ -308,6 +328,10 @@ public class Umovie implements UmovieImpl {
 
         for (int i = 0; i < idiomas.getSize(); i++) { //tomas cada idioma y accedes a su lista de peliculas
             String idioma = idiomas.get(i);
+            // FILTRAR IDIOMAS
+            if (!idioma.equals("en") && !idioma.equals("fr") && !idioma.equals("it") && !idioma.equals("es") && !idioma.equals("pt")) {
+                continue; // lo salteamos si no está en la lista
+            }
             Queue<Pelicula> lista = peliculasPorIdioma.get(idioma);
 
         // Convertís la Queue en un array, porque no podés ordenar directamente una Queue. Entonces, copiás las películas una por una al array pelis[].
@@ -336,24 +360,42 @@ public class Umovie implements UmovieImpl {
                     }}}
 
         // Imprimimos el top 5 de ese idioma
-        System.out.println("Idioma: " + idioma);
-        for (int j = 0; j < Math.min(5, pelis.length); j++) {
-            Pelicula p = pelis[j];
-            int total = evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) != null ? evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) : 0;
 
-            System.out.printf("ID: %s, Título: %s, Evaluaciones: %d, Idioma: %s%n",
-                    p.getId(), p.getTitulo(), total, p.getIdiomaOriginal());
+            for (int j = 0; j < Math.min(5, pelis.length); j++) {
+                Pelicula p = pelis[j];
+                int total = evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) != null
+                        ? evaluacionesPorPelicula.get(Integer.parseInt(p.getId()))
+                        : 0;
+
+                // 👉 Cambio de formato de salida:
+                System.out.printf("%s,%s,%d,%s%n",
+                        p.getId(), p.getTitulo(), total, p.getIdiomaOriginal());
+            }
         }
 
-        System.out.println(); // línea en blanco entre idiomas
-    }}
+        long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
+        System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
+    }
 
 
     @Override
     public void consulta2() {
+// Recorre todas las evaluaciones y, para cada película, suma los puntajes que recibió y cuenta
+// cuántas evaluaciones tiene.
+// Luego, calcula el promedio de calificaciones por película dividiendo la suma total por la
+// cantidad de evaluaciones de cada una.
+// Agrupa las películas según su idioma original.
+// Por cada idioma:
+// Ordena las películas que tienen más de 100 evaluaciones por promedio de calificación de mayor
+// a menor.
+// Muestra en consola el top 10 de esas películas con su ID, título y promedio.
+// Finalmente, imprime el tiempo de ejecución de la consulta.
+
+        long inicio = System.currentTimeMillis(); // ⏱ Inicio del tiempo
+
         // Paso 1: Calcular suma total y cantidad de evaluaciones por película (clave: String id)
-        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000); //guarda la suma de ratings por película.
-        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(10000000); //guarda la cantidad de veces que fue evaluada.
+        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000); // guarda la suma de ratings por película.
+        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(10000000); // guarda la cantidad de veces que fue evaluada.
 
         for (Evaluacion e : evaluaciones.values()) {
             int idNum = e.getMovieId(); // ID como int (de Evaluacion)
@@ -371,13 +413,16 @@ public class Umovie implements UmovieImpl {
             }
         }
 
-        // Paso 2: Calcular promedio por película
+        // Paso 2: Calcular promedio por película (✅ solo si tiene más de 100 calificaciones)
         HashMap<String, Double> promedioPorPelicula = new HashMap<>(1000000);
         for (String id : sumaPorPelicula.keys()) { // devuelve una lista con todas las claves (o llaves) del mapa.
-            double suma = sumaPorPelicula.get(id); //Obtiene la suma de calificaciones.
-            int cantidad = cantidadPorPelicula.get(id); //Obtiene cuántas evaluaciones recibió.
-            promedioPorPelicula.put(id, suma / cantidad); //Calcula el promedio dividiendo suma / cantidad.
-        } //Guarda ese promedio en otro HashMap.
+            double suma = sumaPorPelicula.get(id); // Obtiene la suma de calificaciones.
+            int cantidad = cantidadPorPelicula.get(id); // Obtiene cuántas evaluaciones recibió.
+
+            if (cantidad > 100) { // ✅ filtro agregado: solo si tiene más de 100 evaluaciones
+                promedioPorPelicula.put(id, suma / cantidad); // Guarda el promedio
+            }
+        }
 
         // Paso 3: Agrupar películas por idioma
         HashMap<String, MyLinkedListImpl<Pelicula>> peliculasPorIdioma = new HashMap<>(1000000);
@@ -385,7 +430,7 @@ public class Umovie implements UmovieImpl {
             String idioma = p.getIdiomaOriginal();
 
             if (!peliculasPorIdioma.containsKey(idioma)) {
-                peliculasPorIdioma.put(idioma, new MyLinkedListImpl<>()); //Esto agrupa las películas por idioma en un MyLinkedListImpl.
+                peliculasPorIdioma.put(idioma, new MyLinkedListImpl<>()); // Esto agrupa las películas por idioma en un MyLinkedListImpl.
             }
 
             peliculasPorIdioma.get(idioma).add(p);
@@ -405,7 +450,7 @@ public class Umovie implements UmovieImpl {
                 }
             }
 
-            // Después usás bubble sort para ordenarlo de mayor a menor promedio
+            // Usamos bubble sort para ordenar de mayor a menor promedio
             for (int i = 0; i < pelis.length - 1; i++) {
                 for (int j = 0; j < pelis.length - i - 1; j++) {
                     String id1 = pelis[j].getId();
@@ -424,103 +469,108 @@ public class Umovie implements UmovieImpl {
 
             // Mostrar top 10
             System.out.println("Idioma: " + idioma);
-            for (int i = 0; i < Math.min(10, pelis.length); i++) {
+            int mostradas = 0;
+
+            for (int i = 0; i < pelis.length && mostradas < 10; i++) {
                 Pelicula p = pelis[i];
                 String id = p.getId();
-                double promedio = promedioPorPelicula.containsKey(id) ? promedioPorPelicula.get(id) : 0;
 
-                System.out.printf("ID: %s, Título: %s, Promedio: %.2f%n", id, p.getTitulo(), promedio);
+                if (promedioPorPelicula.containsKey(id)) { // Solo mostrar si tiene >100 evaluaciones
+                    double promedio = promedioPorPelicula.get(id);
+                    System.out.printf("ID: %s, Título: %s, Promedio: %.2f%n", id, p.getTitulo(), promedio);
+                    mostradas++;
+                }
             }
 
             System.out.println(); // Separador entre idiomas
         }
+
+        long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
+        System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
     }
+
 
 
     @Override
     public void consulta3() {
-        // Paso 1: Agrupar películas por saga (colección)
+//“La función agrupa las películas por su colección, calcula ingresos totales y cantidad
+// de películas por colección, ordena de mayor a menor por ingresos y muestra las 5 más
+// importantes junto con sus películas e ingresos.”
+
+        // Paso 1: Agrupar películas por saga (colección o título si está vacía)
         HashMap<String, MyLinkedListImpl<Pelicula>> peliculasPorSaga = new HashMap<>(100);
 
         for (Pelicula p : peliculas.values()) {
-            String coleccion = p.getColeccion();
+            String coleccion = (p.getColeccion() != null && !p.getColeccion().isEmpty()) ? p.getColeccion() : p.getTitulo();
 
-            // Solo consideramos películas que pertenecen a una colección (saga)
-            if (coleccion != null && !coleccion.isEmpty()) {
-                // Si la saga aún no fue registrada, la inicializamos
-                if (!peliculasPorSaga.containsKey(coleccion)) {
-                    peliculasPorSaga.put(coleccion, new MyLinkedListImpl<>());
-                }
-
-                // Agregamos la película a la lista de su saga
-                peliculasPorSaga.get(coleccion).add(p);
+            if (!peliculasPorSaga.containsKey(coleccion)) {
+                peliculasPorSaga.put(coleccion, new MyLinkedListImpl<>());
             }
+            peliculasPorSaga.get(coleccion).add(p);
         }
 
-        // Paso 2: Calcular ingresos por saga y armar estructuras auxiliares
+        // Paso 2: Armar arreglos con los datos de cada saga
+        int n = peliculasPorSaga.size();
+        String[] nombres = new String[n];
+        int[] revenues = new int[n];
+        int[] cantidades = new int[n];
+        MyLinkedListImpl<String>[] ids = new MyLinkedListImpl[n];
 
-        // Clase interna auxiliar para guardar la info de cada saga
-        class InfoSaga {
-            String nombre;                      // Nombre de la saga
-            int totalRevenue;                  // Ingresos generados por todas las pelis
-            int cantidad;                      // Cantidad de películas
-            MyLinkedListImpl<String> ids;      // Lista de IDs de las películas
-
-            InfoSaga(String nombre) {
-                this.nombre = nombre;
-                this.totalRevenue = 0;
-                this.cantidad = 0;
-                this.ids = new MyLinkedListImpl<>();
-            }
-        }
-
-        // Lista para guardar toda la info de todas las sagas
-        MyLinkedListImpl<InfoSaga> sagas = new MyLinkedListImpl<>();
-
-        // Recorremos cada saga y sumamos los datos de sus películas
+        int idx = 0;
         for (String coleccion : peliculasPorSaga.keys()) {
             MyLinkedListImpl<Pelicula> lista = peliculasPorSaga.get(coleccion);
-            InfoSaga info = new InfoSaga(coleccion);
+            nombres[idx] = coleccion;
+            revenues[idx] = 0;
+            cantidades[idx] = lista.getSize();
+            ids[idx] = new MyLinkedListImpl<>();
 
             for (int i = 0; i < lista.getSize(); i++) {
                 try {
                     Pelicula p = lista.get(i);
-                    info.totalRevenue += p.getRevenue();  // Sumamos revenue
-                    info.cantidad++;                     // Contamos película
-                    info.ids.add(p.getId());             // Guardamos ID
+                    revenues[idx] += p.getRevenue();
+                    ids[idx].add(p.getId());
                 } catch (ListOutOfIndex e) {
                     e.printStackTrace();
                 }
             }
-
-            sagas.add(info);  // Guardamos info completa de esta saga
+            idx++;
         }
 
-        // Paso 3: Ordenar las sagas por revenue (bubble sort de mayor a menor)
-        InfoSaga[] arreglo = sagas.toArray();
+        // Paso 3: Bubble sort por revenue descendente
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - i - 1; j++) {
+                if (revenues[j] < revenues[j + 1]) {
+                    // Swap todo
+                    int tempRev = revenues[j];
+                    revenues[j] = revenues[j + 1];
+                    revenues[j + 1] = tempRev;
 
-        for (int i = 0; i < arreglo.length - 1; i++) {
-            for (int j = 0; j < arreglo.length - i - 1; j++) {
-                if (arreglo[j].totalRevenue < arreglo[j + 1].totalRevenue) {
-                    InfoSaga temp = arreglo[j];
-                    arreglo[j] = arreglo[j + 1];
-                    arreglo[j + 1] = temp;
+                    int tempCant = cantidades[j];
+                    cantidades[j] = cantidades[j + 1];
+                    cantidades[j + 1] = tempCant;
+
+                    String tempNom = nombres[j];
+                    nombres[j] = nombres[j + 1];
+                    nombres[j + 1] = tempNom;
+
+                    MyLinkedListImpl<String> tempIds = ids[j];
+                    ids[j] = ids[j + 1];
+                    ids[j + 1] = tempIds;
                 }
             }
         }
 
-        // Paso 4: Mostrar el top 5 de sagas con más ingresos
+        // Paso 4: Mostrar el top 5
         System.out.println("Top 5 sagas con más ingresos:");
-
-        for (int i = 0; i < Math.min(5, arreglo.length); i++) {
-            InfoSaga s = arreglo[i];
-            System.out.println("Saga: " + s.nombre);
-            System.out.println("Cantidad de películas: " + s.cantidad);
-            System.out.println("IDs de películas: " + s.ids);  // Imprime usando el toString de la lista
-            System.out.println("Ingresos generados: $" + s.totalRevenue);
+        for (int i = 0; i < Math.min(5, n); i++) {
+            System.out.println("Saga: " + nombres[i]);
+            System.out.println("Cantidad de películas: " + cantidades[i]);
+            System.out.println("IDs de películas: " + ids[i]);
+            System.out.println("Ingresos generados: $" + revenues[i]);
             System.out.println();
         }
     }
+
 
     @Override
     public void consulta4() {
