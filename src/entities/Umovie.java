@@ -6,7 +6,6 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
 
 import TADS.Hashmap.HashMap;
@@ -15,6 +14,7 @@ import TADS.list.MyArrayListImpl;
 import TADS.list.MyList;
 import TADS.list.linked.MyLinkedListImpl;
 
+import TADS.util.Tuple;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -32,16 +32,23 @@ public class Umovie implements UmovieImpl {
     private HashMap<Integer, Evaluacion> evaluaciones;
     private HashMap<String, Director> directores;
     private HashMap<String, Actor> actores;
-    private Map<String,String> generos = new java.util.HashMap<String,String>();
+    private HashMap<String,String> generos;
     private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
     private HashMap<Integer, Creditos> creditos;
 
 
     public Umovie() {
-        this.peliculas = new HashMap<>(1000000);   // Ver el tamańo
+        this.peliculas = new HashMap<>(100000);
         this.evaluaciones = new HashMap<>(1000000);
+        this.directores = new HashMap<>(100000);
+        this.actores = new HashMap<>(100000);
+        this.generos = new HashMap<>(100000);
+        this.actoresConPeliculas = new HashMap<>(100000);
+        this.directoresConPeliculas = new HashMap<>(100000);
+        this.creditos = new HashMap<>(100000);
     }
+
     public void setPeliculas(HashMap<Integer, Pelicula> peliculas) {
         this.peliculas = peliculas;
     }
@@ -57,6 +64,56 @@ public class Umovie implements UmovieImpl {
     public HashMap<Integer, Evaluacion> getEvaluaciones() {
         return evaluaciones;
     }
+
+    public HashMap<String, Director> getDirectores() {
+        return directores;
+    }
+
+    public void setDirectores(HashMap<String, Director> directores) {
+        this.directores = directores;
+    }
+
+    public HashMap<String, Actor> getActores() {
+        return actores;
+    }
+
+    public void setActores(HashMap<String, Actor> actores) {
+        this.actores = actores;
+    }
+
+    public HashMap<String, String> getGeneros() {
+        return generos;
+    }
+
+    public void setGeneros(HashMap<String, String> generos) {
+        this.generos = generos;
+    }
+
+    public HashMap<String, MyLinkedListImpl<String>> getActoresConPeliculas() {
+        return actoresConPeliculas;
+    }
+
+    public void setActoresConPeliculas(HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas) {
+        this.actoresConPeliculas = actoresConPeliculas;
+    }
+
+    public HashMap<String, MyLinkedListImpl<String>> getDirectoresConPeliculas() {
+        return directoresConPeliculas;
+    }
+
+    public void setDirectoresConPeliculas(HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas) {
+        this.directoresConPeliculas = directoresConPeliculas;
+    }
+
+    public HashMap<Integer, Creditos> getCreditos() {
+        return creditos;
+    }
+
+    public void setCreditos(HashMap<Integer, Creditos> creditos) {
+        this.creditos = creditos;
+    }
+
+
 
     @Override
     public void cargarPeliculas(String rutaCsv) throws IOException {
@@ -541,102 +598,55 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta4() {
-        long inicio = System.currentTimeMillis();
+        MyLinkedListImpl<Tuple<String, Double>> directorPromedios = new MyLinkedListImpl<>();
 
-        // Mapa: director -> lista de ratings
-        TADS.Hashmap.HashMap<String, TADS.list.linked.MyLinkedListImpl<Double>> calificacionesPorDirector = new TADS.Hashmap.HashMap<>(100);
+        for (Director d : directores.values()) {
+            String nombre = d.getName();
+            MyLinkedListImpl<String> peliculasId = d.getPeliculasId();
 
-        for (Evaluacion e : evaluaciones.values()) {
-            String idPelicula = String.valueOf(e.getMovieId());
+            double suma = 0.0;
+            int cantidad = 0;
 
+            for (int i = 0; i < peliculasId.getSize(); i++) {
+                String idStr = peliculasId.get(i);//cada iteracion es un id de pelicula distinto
+                int id;
+                try {
+                    id = Integer.parseInt(idStr);
+                } catch (NumberFormatException e) {
+                    continue; // ID inválido
+                }
 
-            if (peliculas.containsKey(Integer.valueOf(idPelicula))) {
-                for (Director d : directores.values()) {
-                    if (d.getPeliculasId().contains(idPelicula)) {
-                        String nombre = d.getName();
-
-                        if (!calificacionesPorDirector.containsKey(nombre)) {
-                            calificacionesPorDirector.put(nombre, new TADS.list.linked.MyLinkedListImpl<>());
-                        }
-
-                        calificacionesPorDirector.get(nombre).add(e.getRating());
-                        break;
+                for (Evaluacion e : evaluaciones.values()) {
+                    if (e.getMovieId() == id) {
+                        suma += e.getRating();
+                        cantidad++;
                     }
                 }
             }
+
+            if (cantidad > 0) {
+                double promedio = suma / cantidad;
+                directorPromedios.add(new Tuple<>(nombre, promedio));
+            }
         }
 
-        // Lista de DirectorInfo
-        TADS.list.linked.MyLinkedListImpl<DirectorInfo> directorInfos = new TADS.list.linked.MyLinkedListImpl<>();
-
-        for (String nombre : calificacionesPorDirector.keys()) {
-            TADS.list.linked.MyLinkedListImpl<Double> ratings = calificacionesPorDirector.get(nombre);
-
-            double mediana = calcularMediana(ratings);
-            int cantidadPeliculas = directores.get(nombre).getPeliculasId().getSize();
-
-            directorInfos.add(new DirectorInfo(nombre, cantidadPeliculas, mediana));
-        }
-
-        // Ordenar por mediana descendente
-        ordenarPorMedianaDesc(directorInfos);
-
-        // Mostrar top 10
-        System.out.println("Top 10 de los directores que mejor calificación tienen:");
-        for (int i = 0; i < Math.min(10, directorInfos.getSize()); i++) {
-            DirectorInfo d = directorInfos.get(i);
-            System.out.printf("%s,%d,%.2f%n", d.nombre, d.cantidadPeliculas, d.mediana);
-        }
-
-        long fin = System.currentTimeMillis();
-        System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
-    }
-
-    private double calcularMediana(TADS.list.linked.MyLinkedListImpl<Double> lista) {
-        // Ordenar con burbuja
-        for (int i = 0; i < lista.getSize(); i++) {
-            for (int j = 0; j < lista.getSize() - 1 - i; j++) {
-                if (lista.get(j) > lista.get(j + 1)) {
-                    double temp = lista.get(j);
-                    lista.set(j, lista.get(j + 1));
-                    lista.set(j + 1, temp);
+        // Ordenamiento burbuja
+        for (int i = 0; i < directorPromedios.getSize(); i++) {
+            for (int j = 0; j < directorPromedios.getSize() - 1 - i; j++) {
+                if (directorPromedios.get(j).compareTo(directorPromedios.get(j + 1)) > 0) {
+                    Tuple<String, Double> temp = directorPromedios.get(j);
+                    directorPromedios.set(j, directorPromedios.get(j + 1));
+                    directorPromedios.set(j + 1, temp);
                 }
             }
         }
 
-        int n = lista.getSize();
-        if (n == 0) return 0.0;
-        if (n % 2 == 0) {
-            return (lista.get(n / 2 - 1) + lista.get(n / 2)) / 2.0;
-        } else {
-            return lista.get(n / 2);
+        System.out.println("Top 10 de los directores con mejor promedio:");
+        for (int i = 0; i < Math.min(10, directorPromedios.getSize()); i++) {
+            Tuple<String, Double> t = directorPromedios.get(i);
+            System.out.printf("%s,%.2f%n", t.getFirst(), t.getSecond());
         }
-    }
 
-    private void ordenarPorMedianaDesc(TADS.list.linked.MyLinkedListImpl<DirectorInfo> lista) {
-        for (int i = 0; i < lista.getSize(); i++) {
-            for (int j = 0; j < lista.getSize() - 1 - i; j++) {
-                if (lista.get(j).mediana < lista.get(j + 1).mediana) {
-                    DirectorInfo temp = lista.get(j);
-                    lista.set(j, lista.get(j + 1));
-                    lista.set(j + 1, temp);
-                }
-            }
-        }
-    }
-
-
-
-    public class DirectorInfo {
-        public String nombre;
-        public int cantidadPeliculas;
-        public double mediana;
-
-        public DirectorInfo(String nombre, int cantidadPeliculas, double mediana) {
-            this.nombre = nombre;
-            this.cantidadPeliculas = cantidadPeliculas;
-            this.mediana = mediana;
-        }
     }
 
 
