@@ -2,20 +2,27 @@ package entities;
 
 import Interfaz.UmovieImpl;
 
-
 import java.io.*;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import TADS.Hashmap.HashMap;
 import TADS.exceptions.ListOutOfIndex;
+import TADS.list.MyArrayListImpl;
+import TADS.list.MyList;
 import TADS.list.linked.MyLinkedListImpl;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvValidationException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -173,105 +180,76 @@ public class Umovie implements UmovieImpl {
         }
     }
 
-    private static HashMap<String, String> parsearObjeto(String texto) {
-        HashMap<String, String> mapa = new HashMap<>(10000);
-        Matcher m = Pattern.compile("'(\\w+)'\\s*:\\s*'?(.*?)'?(,|$)").matcher(texto);
-        while (m.find()) {
-            mapa.put(m.group(1), m.group(2));
-        }
-        return mapa;
-    }
+//    private static HashMap<String, String> parsearObjeto(String texto) {
+//        HashMap<String, String> mapa = new HashMap<>(10000);
+//        Matcher m = Pattern.compile("'(\\w+)'\\s*:\\s*'?(.*?)'?(,|$)").matcher(texto);
+//        while (m.find()) {
+//            mapa.put(m.group(1), m.group(2));
+//        }
+//        return mapa;
+//    }
 
     @Override
     public void cargarCreditos(String rutaCsv) {
-        HashMap<Integer, Creditos> mapaCreditos = new HashMap<>(100000);
-        InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
-            String linea;
-            br.readLine(); // Saltar cabecera
+        //InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
+//        if (input == null) {
+//            System.out.println(" No se encontró el archivo " + rutaCsv);
+//            return;
+//        }
 
-            int contador = 0; // Contador de créditos cargados
+        try (Reader reader = new FileReader(rutaCsv);
+             CSVReader csvReader = new CSVReaderBuilder(reader).withSkipLines(1).build()) {
 
-            while ((linea = br.readLine()) != null) {
+            MyLinkedListImpl<String[]> records = (MyLinkedListImpl<String[]>) csvReader.readAll();
+
+            String[] parts;
+
+            Gson gson = new Gson();
+
+            Type castListType = new TypeToken<MyLinkedListImpl<Miembro>>(){}.getType();
+            Type crewListType = new TypeToken<MyLinkedListImpl<Miembro>>(){}.getType();
+
+            for (String[] record : records) {
+                //Creditos credit = gson.fromJson(linea, Creditos.class);
+                //System.out.println(credit.getMovieId());
+
                 try {
-                    int ultimaCierre = linea.lastIndexOf("]");
-                    int penultimaCierre = linea.lastIndexOf("]", ultimaCierre - 1);
+                    String castStr = record[0].trim();
+                    String crewStr = record[1].trim();
+                    int movieId = Integer.parseInt(record[2].trim());
 
-                    if (ultimaCierre == -1 || penultimaCierre == -1) {
-                        System.err.println("❗ Línea mal formada, se saltea: " + linea);
-                        continue;
-                    }
+                    if (!peliculas.contains(movieId)) continue;
 
-                    String castJson = linea.substring(0, penultimaCierre + 1);
-                    String crewJson = linea.substring(penultimaCierre + 1, ultimaCierre + 1);
-                    String resto = linea.substring(ultimaCierre + 1).trim();
+                    MyLinkedListImpl<Miembro> miembros = gson.fromJson(crewStr, castListType);
+                    MyLinkedListImpl<Actor> actores = gson.fromJson(castStr, crewListType);
 
-                    // Limpiar el ID (puede venir como ",862" o similar)
-                    String movieIdStr = resto.replaceAll("[^0-9]", "");
-                    if (movieIdStr.isEmpty()) {
-                        System.err.println("❗ ID vacío en línea: " + linea);
-                        continue;
-                    }
+                    // Crear y llenar los mapas primero
+//                        MyLinkedListImpl<Actor> actores = new MyLinkedListImpl<>();
+//                        MyLinkedListImpl<Miembro> miembros = new MyLinkedListImpl<>();
 
-                    int movieId = Integer.parseInt(movieIdStr);
+//                        parseActores(castStr, actores);
+//                        parseMiembros(crewStr, miembros);
 
-                    HashMap<Integer, Cast> mapaCast = new HashMap<>(40);
-                    HashMap<Integer, Crew> mapaCrew = new HashMap<>(40);
+                    // Ahora crear el objeto Credito con los mapas llenos
+                    Creditos credito = new Creditos(movieId, miembros, actores);
 
-                    Matcher castMatcher = Pattern.compile("\\{(.*?)\\}").matcher(castJson);
-                    while (castMatcher.find()) {
-                        String obj = castMatcher.group(1);
-                        HashMap<String, String> datos = parsearObjeto(obj);
-                        Cast c = new Cast(
-                                Integer.parseInt(datos.get("cast_id")),
-                                datos.get("character"),
-                                datos.get("credit_id"),
-                                Integer.parseInt(datos.get("gender")),
-                                Integer.parseInt(datos.get("id")),
-                                datos.get("name"),
-                                Integer.parseInt(datos.get("order")),
-                                datos.get("profile_path")
-                        );
-                        mapaCast.put(c.getId(), c);
-                    }
-
-                    Matcher crewMatcher = Pattern.compile("\\{(.*?)\\}").matcher(crewJson);
-                    while (crewMatcher.find()) {
-                        String obj = crewMatcher.group(1);
-                        HashMap<String, String> datos = parsearObjeto(obj);
-                        Crew c = new Crew(
-                                datos.get("credit_id"),
-                                datos.get("department"),
-                                Integer.parseInt(datos.get("gender")),
-                                Integer.parseInt(datos.get("id")),
-                                datos.get("job"),
-                                datos.get("name"),
-                                datos.get("profile_path")
-                        );
-                        mapaCrew.put(c.getId(), c);
-                    }
-
-                    Creditos creditos = new Creditos(movieId, mapaCast, mapaCrew);
-                    mapaCreditos.put(movieId, creditos);
-                    contador++;
+                    // Agregar al mapa global
+                    creditos.put(movieId, credito);
 
                 } catch (Exception e) {
-                    System.err.println("⚠️ Error procesando línea, se omite:");
-                    System.err.println(linea);
-                    e.printStackTrace();
+                    System.out.println("Mensaje: " + e.getMessage());
                 }
+
             }
 
-            System.out.println("✅ Créditos cargados correctamente: " + contador);
+            System.out.println("Créditos cargados: " + creditos.size());
 
-        } catch (Exception e) {
-            System.err.println("❌ Error leyendo el archivo:");
-            e.printStackTrace();
+        } catch (IOException | CsvException e) {
+            System.out.println("Error leyendo el archivo: " + e.getMessage());
         }
-
-        this.creditos = mapaCreditos;
     }
+
 
 
 
@@ -380,114 +358,73 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta2() {
-// Recorre todas las evaluaciones y, para cada película, suma los puntajes que recibió y cuenta
-// cuántas evaluaciones tiene.
-// Luego, calcula el promedio de calificaciones por película dividiendo la suma total por la
-// cantidad de evaluaciones de cada una.
-// Agrupa las películas según su idioma original.
-// Por cada idioma:
-// Ordena las películas que tienen más de 100 evaluaciones por promedio de calificación de mayor
-// a menor.
-// Muestra en consola el top 10 de esas películas con su ID, título y promedio.
-// Finalmente, imprime el tiempo de ejecución de la consulta.
+        long inicio = System.currentTimeMillis();
 
-        long inicio = System.currentTimeMillis(); // ⏱ Inicio del tiempo
-
-        // Paso 1: Calcular suma total y cantidad de evaluaciones por película (clave: String id)
-        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000); // guarda la suma de ratings por película.
-        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(10000000); // guarda la cantidad de veces que fue evaluada.
+        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000);
+        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(1000000);
 
         for (Evaluacion e : evaluaciones.values()) {
-            int idNum = e.getMovieId(); // ID como int (de Evaluacion)
-            String id = String.valueOf(idNum); // lo convierto a String para usarlo como clave
-
+            String id = String.valueOf(e.getMovieId());
             double puntaje = e.getRating();
 
-            // Acumulo suma y cantidad
             if (sumaPorPelicula.containsKey(id)) {
                 sumaPorPelicula.put(id, sumaPorPelicula.get(id) + puntaje);
-                cantidadPorPelicula.put(id, cantidadPorPelicula.get(id) + 1);
             } else {
                 sumaPorPelicula.put(id, puntaje);
+            }
+
+            if (cantidadPorPelicula.containsKey(id)) {
+                cantidadPorPelicula.put(id, cantidadPorPelicula.get(id) + 1);
+            } else {
                 cantidadPorPelicula.put(id, 1);
             }
+
         }
 
-        // Paso 2: Calcular promedio por película (✅ solo si tiene más de 100 calificaciones)
-        HashMap<String, Double> promedioPorPelicula = new HashMap<>(1000000);
-        for (String id : sumaPorPelicula.keys()) { // devuelve una lista con todas las claves (o llaves) del mapa.
-            double suma = sumaPorPelicula.get(id); // Obtiene la suma de calificaciones.
-            int cantidad = cantidadPorPelicula.get(id); // Obtiene cuántas evaluaciones recibió.
-
-            if (cantidad > 100) { // ✅ filtro agregado: solo si tiene más de 100 evaluaciones
-                promedioPorPelicula.put(id, suma / cantidad); // Guarda el promedio
-            }
-        }
-
-        // Paso 3: Agrupar películas por idioma
-        HashMap<String, MyLinkedListImpl<Pelicula>> peliculasPorIdioma = new HashMap<>(1000000);
+        MyList<Pelicula> candidatas = new MyArrayListImpl<>(100000);
         for (Pelicula p : peliculas.values()) {
-            String idioma = p.getIdiomaOriginal();
-
-            if (!peliculasPorIdioma.containsKey(idioma)) {
-                peliculasPorIdioma.put(idioma, new MyLinkedListImpl<>()); // Esto agrupa las películas por idioma en un MyLinkedListImpl.
+            String id = p.getId();
+            if (cantidadPorPelicula.containsKey(id) && cantidadPorPelicula.get(id) > 100) {
+                candidatas.add(p);
             }
-
-            peliculasPorIdioma.get(idioma).add(p);
         }
 
-        // Paso 4: Recorrer idiomas y mostrar top 10 por promedio
-        for (String idioma : peliculasPorIdioma.keys()) {
-            MyLinkedListImpl<Pelicula> lista = peliculasPorIdioma.get(idioma);
-
-            // MyLinkedListImpl no se puede ordenar directamente → se pasa a un array.
-            Pelicula[] pelis = new Pelicula[lista.getSize()];
-            for (int i = 0; i < lista.getSize(); i++) {
-                try {
-                    pelis[i] = lista.get(i);
-                } catch (ListOutOfIndex e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Usamos bubble sort para ordenar de mayor a menor promedio
-            for (int i = 0; i < pelis.length - 1; i++) {
-                for (int j = 0; j < pelis.length - i - 1; j++) {
-                    String id1 = pelis[j].getId();
-                    String id2 = pelis[j + 1].getId();
-
-                    double prom1 = promedioPorPelicula.containsKey(id1) ? promedioPorPelicula.get(id1) : 0;
-                    double prom2 = promedioPorPelicula.containsKey(id2) ? promedioPorPelicula.get(id2) : 0;
-
-                    if (prom1 < prom2) {
-                        Pelicula temp = pelis[j];
-                        pelis[j] = pelis[j + 1];
-                        pelis[j + 1] = temp;
-                    }
-                }
-            }
-
-            // Mostrar top 10
-            System.out.println("Idioma: " + idioma);
-            int mostradas = 0;
-
-            for (int i = 0; i < pelis.length && mostradas < 10; i++) {
-                Pelicula p = pelis[i];
-                String id = p.getId();
-
-                if (promedioPorPelicula.containsKey(id)) { // Solo mostrar si tiene >100 evaluaciones
-                    double promedio = promedioPorPelicula.get(id);
-                    System.out.printf("ID: %s, Título: %s, Promedio: %.2f%n", id, p.getTitulo(), promedio);
-                    mostradas++;
-                }
-            }
-
-            System.out.println(); // Separador entre idiomas
+        // Paso importante: convertir candidatas a array para poder usar Bubble Sort
+        Pelicula[] pelis = new Pelicula[candidatas.getSize()];
+        for (int i = 0; i < candidatas.getSize(); i++) {
+            pelis[i] = candidatas.get(i);
         }
 
-        long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
+        // Ordenar por promedio (Bubble Sort)
+        for (int i = 0; i < pelis.length - 1; i++) {
+            for (int j = 0; j < pelis.length - i - 1; j++) {
+                String id1 = pelis[j].getId();
+                String id2 = pelis[j + 1].getId();
+
+                double prom1 = sumaPorPelicula.get(id1) / cantidadPorPelicula.get(id1);
+                double prom2 = sumaPorPelicula.get(id2) / cantidadPorPelicula.get(id2);
+
+                if (prom1 < prom2) {
+                    Pelicula temp = pelis[j];
+                    pelis[j] = pelis[j + 1];
+                    pelis[j + 1] = temp;
+                }
+            }
+        }
+
+        // Mostrar top 10
+        System.out.println("Top 10 de películas con mejor promedio (más de 100 calificaciones):");
+        for (int i = 0; i < Math.min(10, pelis.length); i++) {
+            Pelicula p = pelis[i];
+            String id = p.getId();
+            double promedio = sumaPorPelicula.get(id) / cantidadPorPelicula.get(id);
+            System.out.printf("ID: %s, Título: %s, Promedio: %.2f%n", id, p.getTitulo(), promedio);
+        }
+
+        long fin = System.currentTimeMillis();
         System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
     }
+
 
 
 
@@ -563,12 +500,21 @@ public class Umovie implements UmovieImpl {
         // Paso 4: Mostrar el top 5
         System.out.println("Top 5 sagas con más ingresos:");
         for (int i = 0; i < Math.min(5, n); i++) {
-            System.out.println("Saga: " + nombres[i]);
-            System.out.println("Cantidad de películas: " + cantidades[i]);
-            System.out.println("IDs de películas: " + ids[i]);
-            System.out.println("Ingresos generados: $" + revenues[i]);
-            System.out.println();
+            // Convertir lista de IDs a string tipo: 123,456,789
+            StringBuilder idsUnidos = new StringBuilder();
+            for (int j = 0; j < ids[i].getSize(); j++) {
+                try {
+                    idsUnidos.append(ids[i].get(j));
+                    if (j < ids[i].getSize() - 1) idsUnidos.append(",");
+                } catch (ListOutOfIndex e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // Imprimir en formato requerido
+            System.out.printf("%d,\"%s\",%d,[%s],%d%n", i + 1, nombres[i], cantidades[i], idsUnidos.toString(), revenues[i]);
         }
+
     }
 
 

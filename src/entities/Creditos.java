@@ -1,17 +1,12 @@
 package entities;
 
 import TADS.Hashmap.HashMap;
+import TADS.list.linked.MyLinkedListImpl;
 
 public class Creditos {
     private int movieId;                           // ID de la película
-    private HashMap<Integer, Cast> cast;           // cast: clave = id del actor
-    private HashMap<Integer, Crew> crew;           // crew: clave = id del miembro
-
-    public Creditos(int movieId, HashMap<Integer, Cast> cast, HashMap<Integer, Crew> crew) {
-        this.movieId = movieId;
-        this.cast = cast;
-        this.crew = crew;
-    }
+    private MyLinkedListImpl<Miembro> miembros;           // cast: clave = id del actor
+    private MyLinkedListImpl<Actor> actores;           // crew: clave = id del miembro
 
     public int getMovieId() {
         return movieId;
@@ -21,19 +16,28 @@ public class Creditos {
         this.movieId = movieId;
     }
 
-    public HashMap<Integer, Cast> getCast() {
-        return cast;
+    public MyLinkedListImpl<Miembro> getMiembros() {
+        return miembros;
     }
 
-    public void setCast(HashMap<Integer, Cast> cast) {
-        this.cast = cast;
+    public void setMiembros(MyLinkedListImpl<Miembro> miembros) {
+        this.miembros = miembros;
     }
 
-    public HashMap<Integer, Crew> getCrew() {
-        return crew;
+    public MyLinkedListImpl<Actor> getActores() {
+        return actores;
     }
 
-    public void setCrew(HashMap<Integer, Crew> crew) {
-        this.crew = crew;
+    public void setActores(MyLinkedListImpl<Actor> actores) {
+        this.actores = actores;
     }
+
+    public Creditos(int movieId, MyLinkedListImpl<Miembro> miembros, MyLinkedListImpl<Actor> actores) {
+        this.movieId = movieId;
+        this.miembros = miembros;
+        this.actores = actores;
+    }
+
+
+
 }

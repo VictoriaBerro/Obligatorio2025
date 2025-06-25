@@ -1,6 +1,6 @@
 package entities;
 
-public class Cast {
+public class Miembro {
     private int cast_id;
     private String character;
     private String credit_id;
@@ -10,7 +10,7 @@ public class Cast {
     private int order;
     private String profile_path;
 
-    public Cast(int cast_id, String character, String credit_id, int gender, int id, String name, int order, String profile_path) {
+    public Miembro(int cast_id, String character, String credit_id, int gender, int id, String name, int order, String profile_path) {
         this.cast_id = cast_id;
         this.character = character;
         this.credit_id = credit_id;

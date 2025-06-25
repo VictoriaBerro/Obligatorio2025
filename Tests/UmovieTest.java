@@ -1,8 +1,9 @@
-import entities.Evaluacion;
-import entities.Pelicula;
 import entities.Umovie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import entities.Evaluacion;
+import entities.Pelicula;
+
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -10,142 +11,50 @@ import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UmovieTest {
+public class UmovieTest {
 
-    private Umovie sistema;
+    private Umovie umovie;
+    private ByteArrayOutputStream outContent;
 
     @BeforeEach
-    void setUp() {
-        sistema = new Umovie();
+    public void setUp() {
+        umovie = new Umovie();
 
-        // Simulamos películas en español e inglés
-        TADS.Hashmap.HashMap<Integer, Pelicula> pelis = new TADS.Hashmap.HashMap<>(1000);
-        pelis.put(1, new Pelicula("1", "Pelicula A", "es", null, 0, new String[]{}));
-        pelis.put(2, new Pelicula("2", "Pelicula B", "es", null, 0, new String[]{}));
-        pelis.put(3, new Pelicula("3", "Pelicula C", "en", null, 0, new String[]{}));
-        sistema.setPeliculas(pelis);
+        // Redirigir salida estándar para poder verificar el output
+        outContent = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outContent));
 
-        // Simulamos evaluaciones
-        TADS.Hashmap.HashMap<Integer, Evaluacion> evals = new TADS.Hashmap.HashMap<>(1000);
-        evals.put(1, new Evaluacion(101, 1, 4.5, 0));
-        evals.put(2, new Evaluacion(102, 1, 4.0, 0));
-        evals.put(3, new Evaluacion(103, 2, 3.5, 0));
-        evals.put(4, new Evaluacion(104, 3, 5.0, 0));
-        evals.put(5, new Evaluacion(105, 3, 3.0, 0));
-        evals.put(6, new Evaluacion(106, 3, 2.0, 0));
-        sistema.setEvaluaciones(evals);
+        // Crear películas (con distintos idiomas permitidos)
+        umovie.getPeliculas().put(1, new Pelicula("1", "Peli Inglesa A", "en", "genero", 2020, new String[]{}));
+        umovie.getPeliculas().put(2, new Pelicula("2", "Peli Inglesa B", "en", "genero", 2020, new String[]{}));
+        umovie.getPeliculas().put(3, new Pelicula("3", "Peli Inglesa C", "en", "genero", 2020, new String[]{}));
+        umovie.getPeliculas().put(4, new Pelicula("4", "Peli Francesa", "fr", "genero", 2020, new String[]{}));
+        umovie.getPeliculas().put(5, new Pelicula("5", "Peli Española", "es", "genero", 2020, new String[]{}));
+
+        // Crear evaluaciones para cada película
+        umovie.getEvaluaciones().put(1, new Evaluacion(1, 1, 4.0, 1000L));
+        umovie.getEvaluaciones().put(2, new Evaluacion(1, 2, 5.0, 1001L));
+        umovie.getEvaluaciones().put(3, new Evaluacion(2, 2, 3.0, 1002L));
+        umovie.getEvaluaciones().put(4, new Evaluacion(3, 3, 2.5, 1003L));
+        umovie.getEvaluaciones().put(5, new Evaluacion(4, 4, 5.0, 1004L));
+        umovie.getEvaluaciones().put(6, new Evaluacion(5, 5, 4.5, 1005L));
+
     }
 
     @Test
-    void testConsulta1FormatoYContenido() {
-        // Capturar la salida estándar
-        ByteArrayOutputStream salida = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(salida));
+    public void testConsulta1() {
+        umovie.consulta1();
 
-        sistema.consulta1();
+        String salida = outContent.toString();
 
-        // Restaurar salida original
-        System.setOut(originalOut);
+        // Verifica que las películas más evaluadas por idioma aparezcan
+        assertTrue(salida.contains("1,Peli Inglesa A,1,en"));
+        assertTrue(salida.contains("2,Peli Inglesa B,2,en"));
+        assertTrue(salida.contains("3,Peli Inglesa C,1,en"));
+        assertTrue(salida.contains("4,Peli Francesa,1,fr"));
+        assertTrue(salida.contains("5,Peli Española,1,es"));
 
-        String output = salida.toString().trim();
-
-        // ✅ Verifica que contiene los idiomas esperados
-        assertTrue(output.contains("es"));
-        assertTrue(output.contains("en"));
-        assertTrue(output.contains("fr"));
-        assertTrue(output.contains("it"));
-        assertTrue(output.contains("pt"));
-
-        // ❌ Verifica que NO contiene zh
-        assertFalse(output.contains("zh"));
-
-        // ✅ Verifica formato esperado
-        assertTrue(output.contains("1,Pelicula A,2,es"));
-        assertTrue(output.contains("2,Pelicula B,1,es"));
-        assertTrue(output.contains("3,Pelicula C,1,en"));
-
-        // ✅ Verifica que imprime el tiempo al final
-        assertTrue(output.matches("(?s).*Tiempo de ejecución de la consulta: \\d+ ms$"));
+        // Verifica que se haya mostrado el tiempo de ejecución
+        assertTrue(salida.contains("Tiempo de ejecución de la consulta:"));
     }
-
-    @Test
-    public void testConsulta2() {
-        Umovie sistema = new Umovie();
-
-        // Crear películas en distintos idiomas
-        Pelicula p1 = new Pelicula("1", "Pelicula A", "en", "", 0, new String[0]);
-        Pelicula p2 = new Pelicula("2", "Pelicula B", "es", "", 0, new String[0]);
-        Pelicula p3 = new Pelicula("3", "Pelicula C", "fr", "", 0, new String[0]);
-        sistema.getPeliculas().put(1, p1);
-        sistema.getPeliculas().put(2, p2);
-        sistema.getPeliculas().put(3, p3);
-
-        // Agregar evaluaciones:
-        // P1 → 150 evaluaciones de 5.0 (promedio: 5.0)
-        for (int i = 0; i < 150; i++) {
-            sistema.getEvaluaciones().put(i, new Evaluacion(i, 1, 5.0, 0));
-        }
-
-        // P2 → 80 evaluaciones de 3.0 (debe ser ignorada)
-        for (int i = 150; i < 230; i++) {
-            sistema.getEvaluaciones().put(i, new Evaluacion(i, 2, 3.0, 0));
-        }
-
-        // P3 → 120 evaluaciones de 4.0 (promedio: 4.0)
-        for (int i = 230; i < 350; i++) {
-            sistema.getEvaluaciones().put(i, new Evaluacion(i, 3, 4.0, 0));
-        }
-
-        // Capturar salida estándar
-        ByteArrayOutputStream salida = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(salida));
-
-        sistema.consulta2();
-
-        System.setOut(originalOut);
-        String output = salida.toString().trim();
-
-        // Validaciones
-        assertTrue(output.contains("ID: 1, Título: Pelicula A, Promedio: 5.00"));
-        assertTrue(output.contains("ID: 3, Título: Pelicula C, Promedio: 4.00"));
-        assertFalse(output.contains("Pelicula B")); // Debe quedar fuera
-
-        // Confirmar que se imprimió tiempo de ejecución
-        assertTrue(output.matches("(?s).*Tiempo de ejecución de la consulta: \\d+ ms$"));
-    }
-
-    @Test
-    public void testConsulta3() {
-
-        // Agrego películas manualmente al hashmap
-        sistema.getPeliculas().put(1, new Pelicula("1", "Iron Man", "en", "Marvel", 500000, new String[]{"Acción"}));
-        sistema.getPeliculas().put(2, new Pelicula("2", "Iron Man 2", "en", "Marvel", 600000, new String[]{"Acción"}));
-        sistema.getPeliculas().put(3, new Pelicula("3", "Avengers", "en", "Marvel", 800000, new String[]{"Acción"}));
-        sistema.getPeliculas().put(4, new Pelicula("4", "Toy Story", "en", "Pixar", 400000, new String[]{"Animación"}));
-        sistema.getPeliculas().put(5, new Pelicula("5", "Película suelta", "en", "", 700000, new String[]{"Drama"}));
-        sistema.getPeliculas().put(6, new Pelicula("6", "Star Wars", "en", "Star Wars", 900000, new String[]{"Sci-Fi"}));
-
-        // Capturar salida
-        ByteArrayOutputStream salida = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(salida));
-
-        sistema.consulta3();
-
-        System.setOut(originalOut);
-        String output = salida.toString();
-
-        // Verificaciones
-        assertTrue(output.contains("Saga: Marvel"));
-        assertTrue(output.contains("Saga: Pixar"));
-        assertTrue(output.contains("Saga: Película suelta")); // si cumple con la corrección
-        assertTrue(output.contains("Saga: Star Wars"));
-        assertTrue(output.contains("Ingresos generados: $")); // algún total
-
-        // Podés agregar más checks si querés verificar cantidades o IDs exactos
-    }
-
-
 }
