@@ -5,7 +5,9 @@ import Interfaz.UmovieImpl;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 import TADS.Hashmap.HashMap;
@@ -250,59 +252,96 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void cargarCreditos(String rutaCsv) {
-
-        //InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
-//        if (input == null) {
-//            System.out.println(" No se encontró el archivo " + rutaCsv);
-//            return;
-//        }
-
-        try (Reader reader = new FileReader(rutaCsv);
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
+             Reader reader = new InputStreamReader(input, StandardCharsets.UTF_8);
              CSVReader csvReader = new CSVReaderBuilder(reader).withSkipLines(1).build()) {
 
-            MyLinkedListImpl<String[]> records = (MyLinkedListImpl<String[]>) csvReader.readAll();
+            if (input == null) {
+                System.out.println("No se encontró el archivo " + rutaCsv);
+                return;
+            }
 
-            String[] parts;
+            List<String[]> records = csvReader.readAll();
+            System.out.println("Total de filas leídas desde el CSV: " + records.size());
 
             Gson gson = new Gson();
+            Type castListType = new TypeToken<List<Actor>>(){}.getType();
+            Type crewListType = new TypeToken<List<Miembro>>(){}.getType();
 
-            Type castListType = new TypeToken<MyLinkedListImpl<Miembro>>(){}.getType();
-            Type crewListType = new TypeToken<MyLinkedListImpl<Miembro>>(){}.getType();
+            int processedRows = 0;
+            int skippedRows = 0;
+            int count = 0; // Counter for the first three IDs
 
             for (String[] record : records) {
-                //Creditos credit = gson.fromJson(linea, Creditos.class);
-                //System.out.println(credit.getMovieId());
-
                 try {
+                    System.out.println("Procesando fila: " + String.join(",", record)); // Debug entire row
+                    if (record.length < 3) {
+                        System.out.println("Fila inválida (menos de 3 columnas): " + String.join(",", record));
+                        skippedRows++;
+                        continue;
+                    }
+
                     String castStr = record[0].trim();
                     String crewStr = record[1].trim();
                     int movieId = Integer.parseInt(record[2].trim());
+                    System.out.println("Extrayendo movieId: " + movieId + " de columna 3: '" + record[2].trim() + "'"); // Debug movieId
 
-                    if (!peliculas.contains(movieId)) continue;
+                    // Check the first three movieIds
+                    if (count < 3) {
+                        System.out.println("ID de película " + (count + 1) + ": " + movieId + " (esperado: " +
+                                (count == 0 ? 862 : count == 1 ? 8844 : 15602) + ")");
+                        count++;
+                    }
 
-                    MyLinkedListImpl<Miembro> miembros = gson.fromJson(crewStr, castListType);
-                    MyLinkedListImpl<Actor> actores = gson.fromJson(castStr, crewListType);
+                    // Optional peliculas filter (disabled if peliculas is null or not a collection)
+                    if (peliculas != null && peliculas instanceof Collection && !((Collection<?>) peliculas).contains(movieId)) {
+                        System.out.println("movieId " + movieId + " no está en peliculas, fila skipped");
+                        skippedRows++;
+                        continue;
+                    }
 
-                    // Crear y llenar los mapas primero
-//                        MyLinkedListImpl<Actor> actores = new MyLinkedListImpl<>();
-//                        MyLinkedListImpl<Miembro> miembros = new MyLinkedListImpl<>();
+                    // Debug: Validate JSON
+                    if (castStr.isEmpty() || crewStr.isEmpty()) {
+                        System.out.println("JSON vacío en fila para movieId " + movieId + ": " + String.join(",", record));
+                        skippedRows++;
+                        continue;
+                    }
 
-//                        parseActores(castStr, actores);
-//                        parseMiembros(crewStr, miembros);
+                    List<Actor> castList = gson.fromJson(castStr, castListType);
+                    List<Miembro> crewList = gson.fromJson(crewStr, crewListType);
+                    if (castList == null) {
+                        System.out.println("Fallo al deserializar cast para movieId " + movieId);
+                        skippedRows++;
+                        continue;
+                    }
+                    if (crewList == null) {
+                        System.out.println("Fallo al deserializar crew para movieId " + movieId);
+                        skippedRows++;
+                        continue;
+                    }
 
-                    // Ahora crear el objeto Credito con los mapas llenos
+                    MyLinkedListImpl<Actor> actores = new MyLinkedListImpl<>();
+                    MyLinkedListImpl<Miembro> miembros = new MyLinkedListImpl<>();
+
+                    if (castList != null) for (Actor actor : castList) actores.add(actor);
+                    if (crewList != null) for (Miembro miembro : crewList) miembros.add(miembro);
+
+                    System.out.println(actores.getSize());
+                    System.out.println(miembros.getSize());
+
                     Creditos credito = new Creditos(movieId, miembros, actores);
-
-                    // Agregar al mapa global
                     creditos.put(movieId, credito);
+                    System.out.println("Crédito agregado para movieId: " + movieId);
+                    processedRows++;
 
                 } catch (Exception e) {
-                    System.out.println("Mensaje: " + e.getMessage());
+                    System.out.println("Error procesando fila para movieId " + (record.length > 2 ? record[2].trim() : "desconocido") + ": " + e.getMessage());
+                    skippedRows++;
                 }
-
             }
 
             System.out.println("Créditos cargados: " + creditos.size());
+            System.out.println("Filas procesadas: " + processedRows + ", Filas skipped: " + skippedRows);
 
         } catch (IOException | CsvException e) {
             System.out.println("Error leyendo el archivo: " + e.getMessage());
