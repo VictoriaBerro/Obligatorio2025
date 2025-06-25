@@ -76,7 +76,7 @@ public class Umovie implements UmovieImpl {
                 if (campos.length > 17) {
                     try {
                         // ID
-                        String id = campos[5].trim();
+                        String idTexto = campos[5].trim();
 
                         // Título
                         String titulo = campos[17].trim();
@@ -87,10 +87,11 @@ public class Umovie implements UmovieImpl {
 
                         // Revenue
                         int revenue = 0;
+                        int id;
                         try {
-                            revenue = Integer.parseInt(campos[13].trim());
+                            id = Integer.parseInt(idTexto);
                         } catch (NumberFormatException e) {
-                            // revenue = 0 por defecto
+                            continue; // si no es un ID numérico, ignorar esa línea
                         }
 
                         // belongs_to_collection (parsear JSON con name)
@@ -130,7 +131,8 @@ public class Umovie implements UmovieImpl {
 
 
                         // Crear objeto Pelicula
-                        Pelicula pelicula = new Pelicula(id, titulo, idioma, coleccion, revenue, generos);
+                        String idd = String.valueOf(id);
+                        Pelicula pelicula = new Pelicula(idd, titulo, idioma, coleccion, revenue, generos);
                         peliculas.put(pelicula.hashCode(),pelicula);
 
 
@@ -539,95 +541,107 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta4() {
-        // Paso 1: HashMap para acumular suma de ratings y cantidad de evaluaciones por director
-        HashMap<String, Double> sumaRatings = new HashMap<>(100);
-        HashMap<String, Integer> cantidadRatings = new HashMap<>(100);
+        long inicio = System.currentTimeMillis();
 
-        // Paso 2: Recorremos TODAS las evaluaciones
+        // Mapa: director -> lista de ratings
+        TADS.Hashmap.HashMap<String, TADS.list.linked.MyLinkedListImpl<Double>> calificacionesPorDirector = new TADS.Hashmap.HashMap<>(100);
+
         for (Evaluacion e : evaluaciones.values()) {
-            String idPelicula = String.valueOf(e.getMovieId()); // Convertimos el ID a String
+            String idPelicula = String.valueOf(e.getMovieId());
 
-            // Verificamos si la película evaluada existe
+
             if (peliculas.containsKey(Integer.valueOf(idPelicula))) {
-                Pelicula p = peliculas.get(Integer.valueOf(idPelicula));
-
-                // Buscamos al director de esa película
                 for (Director d : directores.values()) {
-                    if (d.getPeliculasId().contains(idPelicula)) {  // La película es de este director
+                    if (d.getPeliculasId().contains(idPelicula)) {
                         String nombre = d.getName();
 
-                        // Acumulamos el rating
-                        double suma = sumaRatings.containsKey(nombre) ? sumaRatings.get(nombre) : 0.0;
-                        int cantidad = cantidadRatings.containsKey(nombre) ? cantidadRatings.get(nombre) : 0;
+                        if (!calificacionesPorDirector.containsKey(nombre)) {
+                            calificacionesPorDirector.put(nombre, new TADS.list.linked.MyLinkedListImpl<>());
+                        }
 
-                        sumaRatings.put(nombre, suma + e.getRating());
-                        cantidadRatings.put(nombre, cantidad + 1);
-
-                        break; // Ya encontramos al director correcto, salimos
-                    }
-                }
-            }
-        }
-
-        // Paso 3: Calcular promedio de cada director con +100 evaluaciones
-        class InfoDirector {
-            String nombre;
-            int cantidadPeliculas;
-            int totalEvaluaciones;
-            double promedio;
-
-            InfoDirector(String nombre, int cantidadPeliculas, int totalEvaluaciones, double promedio) {
-                this.nombre = nombre;
-                this.cantidadPeliculas = cantidadPeliculas;
-                this.totalEvaluaciones = totalEvaluaciones;
-                this.promedio = promedio;
-            }
-        }
-
-        MyLinkedListImpl<InfoDirector> lista = new MyLinkedListImpl<>();
-
-        for (String nombre : sumaRatings.keys()) {
-            int totalEval = cantidadRatings.get(nombre);
-            if (totalEval >= 100) {
-                double promedio = sumaRatings.get(nombre) / totalEval;
-
-                // Buscar director por nombre
-                Director encontrado = null;
-                for (Director d : directores.values()) {
-                    if (d.getName().equals(nombre)) {
-                        encontrado = d;
+                        calificacionesPorDirector.get(nombre).add(e.getRating());
                         break;
                     }
                 }
+            }
+        }
 
-                if (encontrado != null) {
-                    int cantPeliculas = encontrado.getPeliculasId().getSize();
-                    lista.add(new InfoDirector(nombre, cantPeliculas, totalEval, promedio));
+        // Lista de DirectorInfo
+        TADS.list.linked.MyLinkedListImpl<DirectorInfo> directorInfos = new TADS.list.linked.MyLinkedListImpl<>();
+
+        for (String nombre : calificacionesPorDirector.keys()) {
+            TADS.list.linked.MyLinkedListImpl<Double> ratings = calificacionesPorDirector.get(nombre);
+
+            double mediana = calcularMediana(ratings);
+            int cantidadPeliculas = directores.get(nombre).getPeliculasId().getSize();
+
+            directorInfos.add(new DirectorInfo(nombre, cantidadPeliculas, mediana));
+        }
+
+        // Ordenar por mediana descendente
+        ordenarPorMedianaDesc(directorInfos);
+
+        // Mostrar top 10
+        System.out.println("Top 10 de los directores que mejor calificación tienen:");
+        for (int i = 0; i < Math.min(10, directorInfos.getSize()); i++) {
+            DirectorInfo d = directorInfos.get(i);
+            System.out.printf("%s,%d,%.2f%n", d.nombre, d.cantidadPeliculas, d.mediana);
+        }
+
+        long fin = System.currentTimeMillis();
+        System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
+    }
+
+    private double calcularMediana(TADS.list.linked.MyLinkedListImpl<Double> lista) {
+        // Ordenar con burbuja
+        for (int i = 0; i < lista.getSize(); i++) {
+            for (int j = 0; j < lista.getSize() - 1 - i; j++) {
+                if (lista.get(j) > lista.get(j + 1)) {
+                    double temp = lista.get(j);
+                    lista.set(j, lista.get(j + 1));
+                    lista.set(j + 1, temp);
                 }
             }
         }
 
-        // Paso 4: Ordenamos por calificación promedio (descendente)
-        InfoDirector[] top = lista.toArray();
-
-        for (int i = 0; i < top.length - 1; i++) {
-            for (int j = 0; j < top.length - i - 1; j++) {
-                if (top[j].promedio < top[j + 1].promedio) {
-                    InfoDirector temp = top[j];
-                    top[j] = top[j + 1];
-                    top[j + 1] = temp;
-                }
-            }
-        }
-
-        // Paso 5: Mostramos top 10
-        System.out.println("Top 10 directores con mejor calificación promedio (mínimo 100 evaluaciones):");
-        for (int i = 0; i < Math.min(10, top.length); i++) {
-            InfoDirector d = top[i];
-            System.out.printf("Nombre: %s, Películas: %d, Evaluaciones: %d, Promedio: %.2f%n",
-                    d.nombre, d.cantidadPeliculas, d.totalEvaluaciones, d.promedio);
+        int n = lista.getSize();
+        if (n == 0) return 0.0;
+        if (n % 2 == 0) {
+            return (lista.get(n / 2 - 1) + lista.get(n / 2)) / 2.0;
+        } else {
+            return lista.get(n / 2);
         }
     }
+
+    private void ordenarPorMedianaDesc(TADS.list.linked.MyLinkedListImpl<DirectorInfo> lista) {
+        for (int i = 0; i < lista.getSize(); i++) {
+            for (int j = 0; j < lista.getSize() - 1 - i; j++) {
+                if (lista.get(j).mediana < lista.get(j + 1).mediana) {
+                    DirectorInfo temp = lista.get(j);
+                    lista.set(j, lista.get(j + 1));
+                    lista.set(j + 1, temp);
+                }
+            }
+        }
+    }
+
+
+
+    public class DirectorInfo {
+        public String nombre;
+        public int cantidadPeliculas;
+        public double mediana;
+
+        public DirectorInfo(String nombre, int cantidadPeliculas, double mediana) {
+            this.nombre = nombre;
+            this.cantidadPeliculas = cantidadPeliculas;
+            this.mediana = mediana;
+        }
+    }
+
+
+
+
 
     @Override
     public void consulta5() {//devuelvo actor con mas calificaciones por mes del anio

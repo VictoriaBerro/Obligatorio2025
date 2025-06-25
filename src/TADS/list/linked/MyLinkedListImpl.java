@@ -10,6 +10,7 @@ import TADS.stack.MyStack;
 
 import java.util.Iterator;
 
+
 public class MyLinkedListImpl<T> implements MyList<T>, MyStack<T>, MyQueue<T> {
     private Node<T> head;
     private Node<T> tail;
@@ -153,6 +154,22 @@ public class MyLinkedListImpl<T> implements MyList<T>, MyStack<T>, MyQueue<T> {
         }
         return toReturn;
     }
+
+    public void set(int index, T value) {
+        if (index < 0 || index >= this.getSize()) {
+            throw new IndexOutOfBoundsException("Índice fuera de rango: " + index);
+        }
+
+        Node<T> actual = this.head; // asumimos que tu lista tiene el atributo `head`
+
+        for (int i = 0; i < index; i++) {
+            actual = actual.getNext();
+        }
+
+        actual.setValue(value);
+    }
+
+
 
     @Override
     public boolean contains (T valor){          //Devuelve si el valor esta en la lista
