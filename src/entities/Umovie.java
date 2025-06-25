@@ -38,6 +38,7 @@ public class Umovie implements UmovieImpl {
     private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
     private HashMap<Integer, Creditos> creditos;
+    private HashMap<String, MyLinkedListImpl<Integer>> directorMovies;
 
 
     public Umovie() {
@@ -252,9 +253,10 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void cargarCreditos(String rutaCsv) {
-        // Initialize maps for actors and directors
+        // Initialize maps for actors, directors, and directors with movies
         HashMap<String, Actor> actoresHashMap = new HashMap<>(100000);
         TADS.Hashmap.HashMap<String, Director> directoresHashMap = new TADS.Hashmap.HashMap<>(100000);
+        TADS.Hashmap.HashMap<String, MyLinkedListImpl<Integer>> directorMoviesMap = new TADS.Hashmap.HashMap<>(100000); // Director ID -> List of movie IDs
 
         try (InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
              Reader reader = new InputStreamReader(input, StandardCharsets.UTF_8);
@@ -306,11 +308,20 @@ public class Umovie implements UmovieImpl {
                         actores.add(actor);
                     }
 
-                    // Load directors into the map (using department or job)
+                    // Load directors into the map and track their movies
                     for (Miembro miembro : crewList) {
                         if ("Directing".equalsIgnoreCase(miembro.getJob()) || "Director".equalsIgnoreCase(miembro.getJob())) {
-                            Director director = new Director(miembro.getId());
-                            directoresHashMap.put(String.valueOf(miembro.getId()), director);
+                            String directorId = String.valueOf(miembro.getId());
+                            Director director = new Director(Integer.parseInt(directorId));
+                            directoresHashMap.put(directorId, director);
+
+                            // Add movie to the director's movie list
+                            MyLinkedListImpl<Integer> movies = directorMoviesMap.get(directorId);
+                            if (movies == null) {
+                                movies = new MyLinkedListImpl<>();
+                                directorMoviesMap.put(directorId, movies);
+                            }
+                            movies.add(movieId);
                             miembros.add(miembro);
                         }
                     }
@@ -324,14 +335,15 @@ public class Umovie implements UmovieImpl {
                 }
             }
 
-
             this.actores = actoresHashMap;
             this.directores = directoresHashMap;
+            this.directorMovies = directorMoviesMap;
 
         } catch (IOException | CsvException e) {
             System.out.println("Error leyendo el archivo: " + e.getMessage());
         }
     }
+
 
 
 
@@ -619,45 +631,38 @@ public class Umovie implements UmovieImpl {
             MyLinkedListImpl<String> peliculasId = d.getPeliculasId();
 
             double suma = 0.0;
-            int cantidad = 0;
+            int contador = 0;
 
-            for (int i = 0; i < peliculasId.getSize(); i++) {
-                String idStr = peliculasId.get(i);//cada iteracion es un id de pelicula distinto
-                int id;
-                try {
-                    id = Integer.parseInt(idStr);
-                } catch (NumberFormatException e) {
-                    continue; // ID inválido
+            for (String id : peliculasId) {
+                Integer iid = Integer.parseInt(id);
+                for (Evaluacion ev : evaluaciones.values()) {
+                    if (ev.getMovieId() == iid) {
+                        suma += ev.getRating();
+                        contador++;
+                    }
                 }
-
-                for (Evaluacion e : evaluaciones.values()) {
-                    if (e.getMovieId() == id) {
-                        suma += e.getRating();
-                        cantidad++;
+            }
+            if (contador > 0) {
+                double promedio = suma / contador;
+                directorPromedios.add(new Tuple<>(nombre, promedio));
+            }
+            for (int i = 0; i < directorPromedios.getSize(); i++) {
+                for (int j = 0; j < directorPromedios.getSize() - 1 - i; j++) {
+                    if (directorPromedios.get(j).compareTo(directorPromedios.get(j + 1)) > 0) {
+                        Tuple<Integer, Double> temp = directorPromedios.get(j);
+                        directorPromedios.set(j, directorPromedios.get(j + 1));
+                        directorPromedios.set(j + 1, temp);
                     }
                 }
             }
 
-            if (cantidad > 0) {
-                double promedio = suma / cantidad;
-                directorPromedios.add(new Tuple<>(nombre, promedio));
-            }
         }
 
-        // Ordenamiento burbuja
-        for (int i = 0; i < directorPromedios.getSize(); i++) {
-            for (int j = 0; j < directorPromedios.getSize() - 1 - i; j++) {
-                if (directorPromedios.get(j).compareTo(directorPromedios.get(j + 1)) > 0) {
-                    Tuple<Integer, Double> temp = directorPromedios.get(j);
-                    directorPromedios.set(j, directorPromedios.get(j + 1));
-                    directorPromedios.set(j + 1, temp);
-                }
-            }
-        }
+
         long fin = System.currentTimeMillis();
         long tiempo = fin - ini;
         System.out.println("Top 10 de los directores con mejor promedio:");
-        for (int i = 0; i < Math.min(10, directorPromedios.getSize()); i++) {
+        for (int i = 0; i < 10; i++) {
             Tuple<Integer, Double> t = directorPromedios.get(i);
             System.out.printf("%s,%.2f%n", t.getFirst(), t.getSecond());
         }
