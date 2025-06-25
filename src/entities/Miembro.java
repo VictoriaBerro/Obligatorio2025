@@ -9,8 +9,9 @@ public class Miembro {
     private String name;
     private int order;
     private String profile_path;
+    private String job;
 
-    public Miembro(int cast_id, String character, String credit_id, int gender, int id, String name, int order, String profile_path) {
+    public Miembro(int cast_id, String character, String credit_id, int gender, int id, String name, int order, String profile_path, String job) {
         this.cast_id = cast_id;
         this.character = character;
         this.credit_id = credit_id;
@@ -19,8 +20,24 @@ public class Miembro {
         this.name = name;
         this.order = order;
         this.profile_path = profile_path;
+        this.job = job;
     }
 
+    public int getCast_id() {
+        return cast_id;
+    }
+
+    public void setCast_id(int cast_id) {
+        this.cast_id = cast_id;
+    }
+
+    public String getJob() {
+        return job;
+    }
+
+    public void setJob(String job) {
+        this.job = job;
+    }
 
     public String getCharacter() {
         return character;

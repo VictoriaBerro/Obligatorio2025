@@ -3,20 +3,20 @@ package entities;
 import TADS.list.linked.MyLinkedListImpl;
 
 public class Director {
-    String name;
+    int idMiembro;
     MyLinkedListImpl<String> peliculasId;
 
-    public Director(String name) {
-        this.name = name;
+    public Director(int idMiembro) {
+        this.idMiembro = idMiembro;
         this.peliculasId = new MyLinkedListImpl<String>();
     }
 
-    public String getName() {
-        return name;
+    public int getIdMiembro() {
+        return idMiembro;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setIdMiembro(int idMiembro) {
+        this.idMiembro = idMiembro;
     }
 
     public MyLinkedListImpl<String> getPeliculasId() {

@@ -61,22 +61,7 @@ public class UmovieTest {
 
     @Test
     public void testConsulta4(){
-        Umovie sistema = new Umovie();
 
-// Agregamos 11 directores
-        for (int i = 0; i < 11; i++) {
-            String nombre = "Director" + i;
-            Director d = new Director(nombre);
-            String idPelicula = String.valueOf(i + 1); // Película 1, 2, 3, ...
-            d.getPeliculasId().add(idPelicula);
-            sistema.getDirectores().put(nombre, d);
-
-            double rating = 5.0 - (i * 0.2); // 5.0, 4.8, 4.6, ..., 2.8
-            sistema.getEvaluaciones().put(i + 1, new Evaluacion(200 + i, i + 1, rating, 0));
-        }
-
-// Ejecutar la consulta
-        sistema.consulta4();
 
     }
 }

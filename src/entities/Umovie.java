@@ -252,6 +252,10 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void cargarCreditos(String rutaCsv) {
+        // Initialize maps for actors and directors
+        HashMap<String, Actor> actoresHashMap = new HashMap<>(100000);
+        TADS.Hashmap.HashMap<String, Director> directoresHashMap = new TADS.Hashmap.HashMap<>(100000);
+
         try (InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
              Reader reader = new InputStreamReader(input, StandardCharsets.UTF_8);
              CSVReader csvReader = new CSVReaderBuilder(reader).withSkipLines(1).build()) {
@@ -262,7 +266,6 @@ public class Umovie implements UmovieImpl {
             }
 
             List<String[]> records = csvReader.readAll();
-            System.out.println("Total de filas leídas desde el CSV: " + records.size());
 
             Gson gson = new Gson();
             Type castListType = new TypeToken<List<Actor>>(){}.getType();
@@ -270,13 +273,10 @@ public class Umovie implements UmovieImpl {
 
             int processedRows = 0;
             int skippedRows = 0;
-            int count = 0; // Counter for the first three IDs
 
             for (String[] record : records) {
                 try {
-                    System.out.println("Procesando fila: " + String.join(",", record)); // Debug entire row
                     if (record.length < 3) {
-                        System.out.println("Fila inválida (menos de 3 columnas): " + String.join(",", record));
                         skippedRows++;
                         continue;
                     }
@@ -284,38 +284,15 @@ public class Umovie implements UmovieImpl {
                     String castStr = record[0].trim();
                     String crewStr = record[1].trim();
                     int movieId = Integer.parseInt(record[2].trim());
-                    System.out.println("Extrayendo movieId: " + movieId + " de columna 3: '" + record[2].trim() + "'"); // Debug movieId
 
-                    // Check the first three movieIds
-                    if (count < 3) {
-                        System.out.println("ID de película " + (count + 1) + ": " + movieId + " (esperado: " +
-                                (count == 0 ? 862 : count == 1 ? 8844 : 15602) + ")");
-                        count++;
-                    }
-
-                    // Optional peliculas filter (disabled if peliculas is null or not a collection)
-                    if (peliculas != null && peliculas instanceof Collection && !((Collection<?>) peliculas).contains(movieId)) {
-                        System.out.println("movieId " + movieId + " no está en peliculas, fila skipped");
-                        skippedRows++;
-                        continue;
-                    }
-
-                    // Debug: Validate JSON
                     if (castStr.isEmpty() || crewStr.isEmpty()) {
-                        System.out.println("JSON vacío en fila para movieId " + movieId + ": " + String.join(",", record));
                         skippedRows++;
                         continue;
                     }
 
                     List<Actor> castList = gson.fromJson(castStr, castListType);
                     List<Miembro> crewList = gson.fromJson(crewStr, crewListType);
-                    if (castList == null) {
-                        System.out.println("Fallo al deserializar cast para movieId " + movieId);
-                        skippedRows++;
-                        continue;
-                    }
-                    if (crewList == null) {
-                        System.out.println("Fallo al deserializar crew para movieId " + movieId);
+                    if (castList == null || crewList == null) {
                         skippedRows++;
                         continue;
                     }
@@ -323,25 +300,33 @@ public class Umovie implements UmovieImpl {
                     MyLinkedListImpl<Actor> actores = new MyLinkedListImpl<>();
                     MyLinkedListImpl<Miembro> miembros = new MyLinkedListImpl<>();
 
-                    if (castList != null) for (Actor actor : castList) actores.add(actor);
-                    if (crewList != null) for (Miembro miembro : crewList) miembros.add(miembro);
+                    // Load actors into the map
+                    for (Actor actor : castList) {
+                        actoresHashMap.put(actor.getId(), actor);
+                        actores.add(actor);
+                    }
 
-                    System.out.println(actores.getSize());
-                    System.out.println(miembros.getSize());
+                    // Load directors into the map (using department or job)
+                    for (Miembro miembro : crewList) {
+                        if ("Directing".equalsIgnoreCase(miembro.getJob()) || "Director".equalsIgnoreCase(miembro.getJob())) {
+                            Director director = new Director(miembro.getId());
+                            directoresHashMap.put(String.valueOf(miembro.getId()), director);
+                            miembros.add(miembro);
+                        }
+                    }
 
                     Creditos credito = new Creditos(movieId, miembros, actores);
                     creditos.put(movieId, credito);
-                    System.out.println("Crédito agregado para movieId: " + movieId);
                     processedRows++;
 
                 } catch (Exception e) {
-                    System.out.println("Error procesando fila para movieId " + (record.length > 2 ? record[2].trim() : "desconocido") + ": " + e.getMessage());
                     skippedRows++;
                 }
             }
 
-            System.out.println("Créditos cargados: " + creditos.size());
-            System.out.println("Filas procesadas: " + processedRows + ", Filas skipped: " + skippedRows);
+
+            this.actores = actoresHashMap;
+            this.directores = directoresHashMap;
 
         } catch (IOException | CsvException e) {
             System.out.println("Error leyendo el archivo: " + e.getMessage());
@@ -353,17 +338,6 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta1() {
-//La función analiza un conjunto de películas y sus evaluaciones, agrupándolas por idioma,
-// y para cada idioma muestra las 5 películas más evaluadas (con mayor cantidad de calificaciones).
-// Finalmente, imprime el tiempo total que tardó en hacer ese procesamiento.
-
-        //Cuenta cuántas veces fue evaluada cada película.
-        //Agrupa las películas por su idioma original.
-        //Para cada idioma: Ordena las películas de ese idioma por cantidad de evaluaciones (de mayor a menor).
-        //Muestra hasta 5 películas con más evaluaciones, en formato: id,título,totalEvaluaciones,idioma.
-        //Imprime cuánto tiempo tomó ejecutar la consulta.
-
-
         long inicio = System.currentTimeMillis(); // ⏱ Inicio del tiempo
 //        // Paso 1: Calcular total de evaluaciones por película
         HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(10000); // mapa donde la clave es el id de la peli, lo otro es cant de evaluaciones
@@ -637,10 +611,11 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta4() {
-        MyLinkedListImpl<Tuple<String, Double>> directorPromedios = new MyLinkedListImpl<>();
+        long ini = System.currentTimeMillis();
+        MyLinkedListImpl<Tuple<Integer, Double>> directorPromedios = new MyLinkedListImpl<>();
 
         for (Director d : directores.values()) {
-            String nombre = d.getName();
+            int nombre = d.getIdMiembro();
             MyLinkedListImpl<String> peliculasId = d.getPeliculasId();
 
             double suma = 0.0;
@@ -673,20 +648,24 @@ public class Umovie implements UmovieImpl {
         for (int i = 0; i < directorPromedios.getSize(); i++) {
             for (int j = 0; j < directorPromedios.getSize() - 1 - i; j++) {
                 if (directorPromedios.get(j).compareTo(directorPromedios.get(j + 1)) > 0) {
-                    Tuple<String, Double> temp = directorPromedios.get(j);
+                    Tuple<Integer, Double> temp = directorPromedios.get(j);
                     directorPromedios.set(j, directorPromedios.get(j + 1));
                     directorPromedios.set(j + 1, temp);
                 }
             }
         }
-
+        long fin = System.currentTimeMillis();
+        long tiempo = fin - ini;
         System.out.println("Top 10 de los directores con mejor promedio:");
         for (int i = 0; i < Math.min(10, directorPromedios.getSize()); i++) {
-            Tuple<String, Double> t = directorPromedios.get(i);
+            Tuple<Integer, Double> t = directorPromedios.get(i);
             System.out.printf("%s,%.2f%n", t.getFirst(), t.getSecond());
         }
+        System.out.println("Tiempo de ejecución de la consulta: " + tiempo + " ms");
 
     }
+
+
 
 
 
