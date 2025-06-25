@@ -430,92 +430,111 @@ public class Umovie implements UmovieImpl {
 
     @Override
     public void consulta3() {
-//“La función agrupa las películas por su colección, calcula ingresos totales y cantidad
-// de películas por colección, ordena de mayor a menor por ingresos y muestra las 5 más
-// importantes junto con sus películas e ingresos.”
+        long ini = System.currentTimeMillis();
 
-        // Paso 1: Agrupar películas por saga (colección o título si está vacía)
-        HashMap<String, MyLinkedListImpl<Pelicula>> peliculasPorSaga = new HashMap<>(100);
+        // Paso 1: Agrupar películas por colección o título
+        HashMap<String, ColeccionExtendida> colecciones = new HashMap<>(1000);
 
-        for (Pelicula p : peliculas.values()) {
-            String coleccion = (p.getColeccion() != null && !p.getColeccion().isEmpty()) ? p.getColeccion() : p.getTitulo();
+        MyLinkedListImpl<Pelicula> listaPeliculas = peliculas.values();
+        for (int i = 0; i < listaPeliculas.getSize(); i++) {
+            Pelicula p = listaPeliculas.get(i);
 
-            if (!peliculasPorSaga.containsKey(coleccion)) {
-                peliculasPorSaga.put(coleccion, new MyLinkedListImpl<>());
+            String nombreColeccion = (p.getColeccion() != null && !p.getColeccion().isEmpty())
+                    ? p.getColeccion()
+                    : p.getTitulo();
+
+            ColeccionExtendida c = colecciones.get(nombreColeccion);
+            if (c == null) {
+                c = new ColeccionExtendida(nombreColeccion);
+                colecciones.put(nombreColeccion, c);
             }
-            peliculasPorSaga.get(coleccion).add(p);
+
+            c.idsPeliculas.add(p.getId());
+            c.revenueTotal += p.getRevenue();
         }
 
-        // Paso 2: Armar arreglos con los datos de cada saga
-        int n = peliculasPorSaga.size();
-        String[] nombres = new String[n];
-        int[] revenues = new int[n];
-        int[] cantidades = new int[n];
-        MyLinkedListImpl<String>[] ids = new MyLinkedListImpl[n];
+        // Paso 2: Pasar a lista para poder ordenar
+        MyList<ColeccionExtendida> listaColecciones = new MyLinkedListImpl<>();
+        MyList<String> claves = colecciones.keys();
 
-        int idx = 0;
-        for (String coleccion : peliculasPorSaga.keys()) {
-            MyLinkedListImpl<Pelicula> lista = peliculasPorSaga.get(coleccion);
-            nombres[idx] = coleccion;
-            revenues[idx] = 0;
-            cantidades[idx] = lista.getSize();
-            ids[idx] = new MyLinkedListImpl<>();
-
-            for (int i = 0; i < lista.getSize(); i++) {
-                try {
-                    Pelicula p = lista.get(i);
-                    revenues[idx] += p.getRevenue();
-                    ids[idx].add(p.getId());
-                } catch (ListOutOfIndex e) {
-                    e.printStackTrace();
-                }
-            }
-            idx++;
+        for (int i = 0; i < claves.getSize(); i++) {
+            String clave = claves.get(i);
+            listaColecciones.add(colecciones.get(clave));
         }
 
-        // Paso 3: Bubble sort por revenue descendente
+        // Paso 3: Ordenar por revenueTotal (bubble sort)
+        int n = listaColecciones.getSize();
         for (int i = 0; i < n - 1; i++) {
             for (int j = 0; j < n - i - 1; j++) {
-                if (revenues[j] < revenues[j + 1]) {
-                    // Swap todo
-                    int tempRev = revenues[j];
-                    revenues[j] = revenues[j + 1];
-                    revenues[j + 1] = tempRev;
+                ColeccionExtendida a = listaColecciones.get(j);
+                ColeccionExtendida b = listaColecciones.get(j + 1);
 
-                    int tempCant = cantidades[j];
-                    cantidades[j] = cantidades[j + 1];
-                    cantidades[j + 1] = tempCant;
-
-                    String tempNom = nombres[j];
-                    nombres[j] = nombres[j + 1];
-                    nombres[j + 1] = tempNom;
-
-                    MyLinkedListImpl<String> tempIds = ids[j];
-                    ids[j] = ids[j + 1];
-                    ids[j + 1] = tempIds;
+                if (a.revenueTotal < b.revenueTotal) {
+                    listaColecciones.remove(j + 1);
+                    listaColecciones.remove(j);
+                    listaColecciones.add(b, j);
+                    listaColecciones.add(a, j + 1);
                 }
             }
         }
 
-        // Paso 4: Mostrar el top 5
-        System.out.println("Top 5 sagas con más ingresos:");
-        for (int i = 0; i < Math.min(5, n); i++) {
-            // Convertir lista de IDs a string tipo: 123,456,789
-            StringBuilder idsUnidos = new StringBuilder();
-            for (int j = 0; j < ids[i].getSize(); j++) {
-                try {
-                    idsUnidos.append(ids[i].get(j));
-                    if (j < ids[i].getSize() - 1) idsUnidos.append(",");
-                } catch (ListOutOfIndex e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Imprimir en formato requerido
-            System.out.printf("%d,\"%s\",%d,[%s],%d%n", i + 1, nombres[i], cantidades[i], idsUnidos.toString(), revenues[i]);
+        // Paso 4: Mostrar top 5
+        System.out.println("Top 5 sagas/colecciones por ingresos:");
+        for (int i = 0; i < Math.min(5, listaColecciones.getSize()); i++) {
+            ColeccionExtendida c = listaColecciones.get(i);
+            System.out.printf("%d,\"%s\",%d,[%s],%d%n",
+                    i + 1,
+                    c.nombre,
+                    c.idsPeliculas.getSize(),
+                    idsComoString(c.idsPeliculas),
+                    c.revenueTotal);
         }
 
+        System.out.printf("%nTiempo de ejecución: %d ms%n", (System.currentTimeMillis() - ini));
     }
+    private static class ColeccionExtendida {
+        String nombre;
+        MyLinkedListImpl<String> idsPeliculas;
+        long revenueTotal;
+
+        public ColeccionExtendida(String nombre) {
+            this.nombre = nombre;
+            this.idsPeliculas = new MyLinkedListImpl<>();
+            this.revenueTotal = 0;
+        }
+    }
+    private static String idsComoString(MyLinkedListImpl<String> lista) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lista.getSize(); i++) {
+            try {
+                sb.append(lista.get(i));
+                if (i < lista.getSize() - 1) sb.append(",");
+            } catch (ListOutOfIndex e) {
+                e.printStackTrace();
+            }
+        }
+        return sb.toString();
+    }
+
+
+    private static long minimo(ColeccionExtendida[] arr, int n) {
+        long m = Long.MAX_VALUE;
+        for (int i = 0; i < n; i++)
+            if (arr[i].revenueTotal < m) m = arr[i].revenueTotal;
+        return m;
+    }
+
+    private static int indiceMin(ColeccionExtendida[] arr, int n) {
+        int idx = 0;
+        long m = arr[0].revenueTotal;
+        for (int i = 1; i < n; i++)
+            if (arr[i].revenueTotal < m) {
+                m = arr[i].revenueTotal;
+                idx = i;
+            }
+        return idx;
+    }
+
 
 
     @Override
