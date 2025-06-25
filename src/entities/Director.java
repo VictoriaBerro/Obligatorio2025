@@ -6,6 +6,10 @@ public class Director {
     String name;
     MyLinkedListImpl<String> peliculasId;
 
+    public Director(String name) {
+        this.name = name;
+        this.peliculasId = new MyLinkedListImpl<String>();
+    }
 
     public String getName() {
         return name;
@@ -23,10 +27,7 @@ public class Director {
         this.peliculasId = peliculasId;
     }
 
-    public Director(String name) {
-        this.name = name;
-        this.peliculasId = new MyLinkedListImpl<String>();
-    }
+
 
 
 }
