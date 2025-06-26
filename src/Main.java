@@ -34,7 +34,7 @@ public class Main {
                     long duracion = fin - inicio;
                     System.out.println("Carga de datos exitosa. Tiempo: " + duracion + " milisegundos.");
                 } catch (Exception e) {
-                    System.out.println("❌ Error durante la carga: " + e.getMessage());
+                    System.out.println("Error durante la carga: " + e.getMessage());
                 }
 
 
@@ -51,7 +51,7 @@ public class Main {
                     System.out.println("7. Salir");
 
                     if (!scanner.hasNextInt()) {
-                        System.out.println("❌ Por favor, ingrese un número válido.");
+                        System.out.println("Por favor, ingrese un número válido.");
                         scanner.next();
                         continue;
                     }
@@ -72,14 +72,14 @@ public class Main {
                     } else if (opcion2 == 7) {
                         salir = true;
                     } else {
-                        System.out.println("❌ Opción inválida.");
+                        System.out.println("Opción inválida.");
                     }
                 }
             } else if (opcion == 3) {
                 continuar = false;
-                System.out.println("👋 ¡Gracias por usar UMovie! Hasta la próxima.");
+                System.out.println("¡Gracias por usar UMovie! Hasta la próxima.");
             } else {
-                System.out.println("❌ Opción inválida.");
+                System.out.println("Opción inválida.");
             }
         }
     }
