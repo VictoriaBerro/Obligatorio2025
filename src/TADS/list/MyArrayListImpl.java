@@ -169,5 +169,13 @@ public class MyArrayListImpl<T> implements MyList<T> {
         System.arraycopy(this.array, 0, newArray, 0, this.array.length);
         this.array = newArray;
     }
+    public void set(int index, T value) {
+        if (index >= 0 && index < pointerToLastValue) {
+            this.array[index] = value;
+        } else {
+            throw new IndexOutOfBoundsException("Índice fuera de rango: " + index);
+        }
+    }
+
 
 }

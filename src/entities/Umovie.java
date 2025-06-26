@@ -2,6 +2,7 @@ package entities;
 
 import Interfaz.UmovieImpl;
 import TADS.Hashmap.HashMap;
+import TADS.exceptions.ListOutOfIndex;
 import TADS.list.MyArrayListImpl;
 import TADS.list.linked.MyLinkedListImpl;
 import TADS.list.MyList;
@@ -11,6 +12,7 @@ import com.google.gson.reflect.TypeToken;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvValidationException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -30,6 +32,7 @@ import java.util.*;
         private HashMap<Integer, Creditos> creditos;
         private HashMap<String, MyLinkedListImpl<Integer>> directorMovies;
         private MyLinkedListImpl<Tuple<Integer, Tuple<Integer, Integer>>> datosPeliculas;
+        private HashMap<Integer, ColeccionContador> colecciones = new HashMap<>(100000);
 
 
         public Umovie() {
@@ -42,115 +45,106 @@ import java.util.*;
             this.directoresConPeliculas = new HashMap<>(100000);
             this.creditos = new HashMap<>(100000);
             this.datosPeliculas = new MyLinkedListImpl<>();
+;
+
 
         }
 
-        public class InfoSaga {
-            public int idColeccion;
-            public String nombreColeccion;
-            public int revenueAcumulado;
-            public int cantidadPeliculas;
-
-            public InfoSaga(int idColeccion, String nombreColeccion, int revenue) {
-                this.idColeccion = idColeccion;
-                this.nombreColeccion = nombreColeccion;
-                this.revenueAcumulado = revenue;
-                this.cantidadPeliculas = 1;
-            }
-        }
 
         @Override
         public void cargarPeliculas(String rutaCsv) throws IOException {
+            int peliculasCargadas = 0;
+
             InputStream input = getClass().getClassLoader().getResourceAsStream("movies_metadata.csv");
-            if (input == null) {
-                System.out.println("No se encontró el archivo movies_metadata.csv");
-                return;
-            }
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {//leo linea por linea
-                String linea;
-                br.readLine(); // Saltar la primera fila, no me interesan los nombres de las columnas
+            if (input == null) return;
 
-                while ((linea = br.readLine()) != null) {
-                    String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                    //divido en columnas
+            try (CSVReader csvReader = new CSVReader(new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)))) {
+                String[] headers = csvReader.readNext();
+                int columnasEsperadas = headers.length;
 
-                    if (campos.length > 17) {
-                        try {
-                            // ID
-                            String idTexto = campos[5].trim();
+                String[] campos;
+                while ((campos = csvReader.readNext()) != null) {
+                    if (campos.length < columnasEsperadas) continue;
 
-                            // Título
-                            String titulo = campos[17].trim();
+                    try {
+                        // Parseo de campos clave
+                        int id = Integer.parseInt(campos[5].trim());
+                        String titulo = campos[18].trim();
+                        String idioma = campos[7].trim();
 
-                            // Idioma original
-                            String idioma = campos[7].trim();
-                            //el .trim() elimina espacios en blanco
-
-                            // Revenue
-                            int revenue = 0;
-                            int id;
+                        // Revenue
+                        int revenue = 0;
+                        String revenueTexto = campos[13].trim();
+                        if (!revenueTexto.isEmpty()) {
                             try {
-                                id = Integer.parseInt(idTexto);
-                            } catch (NumberFormatException e) {
-                                continue; // si no es un ID numérico, ignorar esa línea
-                            }
-
-                            // belongs_to_collection (parsear JSON con name)
-                            String coleccionTexto = campos[1].trim();
-                            String coleccion = null;
-                            if (!coleccionTexto.isEmpty()) {
-                                coleccionTexto = coleccionTexto.replace("'", "\"");
-                                try {
-                                    JSONObject colJson = new JSONObject(coleccionTexto);
-                                    coleccion = colJson.getString("name");
-                                } catch (Exception e) {
-                                    // dejar coleccion como null
-                                }
-                            }
-
-                            // genres (JSONArray de objetos con "name")
-                            String generosTexto = campos[3].trim();
-                            String[] generos = new String[0];
-                            if (!generosTexto.isEmpty()) {
-                                try {
-                                    // 👉 Arreglamos las comillas simples por dobles para que sea JSON válido
-                                    generosTexto = generosTexto.replace("'", "\"");
-
-                                    JSONArray generosJson = new JSONArray(generosTexto.substring(1, generosTexto.length() - 1));
-                                    generos = new String[generosJson.length()];
-                                    for (int i = 0; i < generosJson.length(); i++) {
-                                        JSONObject generoObj = generosJson.getJSONObject(i);
-                                        if (generoObj.has("name")) {
-                                            generos[i] = generoObj.getString("name");
-                                            this.generos.put(generos[i],generos[i]);
-                                        }
-                                    }
-                                } catch (Exception e) {
-
-                                }
-                            }
-
-
-                            // Crear objeto Pelicula
-                            String idd = String.valueOf(id);
-                            Pelicula pelicula = new Pelicula(idd, titulo, idioma, coleccion, revenue, generos);
-                            peliculas.put(pelicula.hashCode(),pelicula);
-
-
-                        } catch (Exception e) {
-                            // Si esta línea falla, seguir con la siguiente
+                                revenue = (int) Double.parseDouble(revenueTexto);
+                            } catch (NumberFormatException ignored) {}
                         }
+
+                        // Colección
+                        String coleccionTexto = campos[1].trim();
+                        String coleccion = "[]";
+                        if (!coleccionTexto.isEmpty()) {
+                            try {
+                                String cleaned = coleccionTexto.replace("'", "\"");
+                                JSONObject colJson = new JSONObject(cleaned);
+                                if (colJson.has("id") && colJson.has("name")) {
+                                    int idColeccion = colJson.getInt("id");
+                                    String nombreColeccion = colJson.getString("name");
+                                    coleccion = idColeccion + "/" + nombreColeccion;
+
+                                    ColeccionContador existente = colecciones.get(idColeccion);
+                                    if (existente != null) {
+                                        existente.incrementar();
+                                        existente.sumarRevenue(revenue);
+                                    } else {
+                                        colecciones.put(idColeccion, new ColeccionContador(idColeccion, nombreColeccion, revenue));
+                                    }
+                                }
+                            } catch (Exception e) {
+                                coleccion = "[]";
+                            }
+                        }
+
+                        // Géneros
+                        String generosTexto = campos[3].trim();
+                        String[] generos = new String[0];
+                        if (!generosTexto.isEmpty()) {
+                            try {
+                                String cleaned = generosTexto.replace("'", "\"");
+                                JSONArray generosJson = new JSONArray(cleaned);
+                                generos = new String[generosJson.length()];
+                                for (int i = 0; i < generosJson.length(); i++) {
+                                    JSONObject generoObj = generosJson.getJSONObject(i);
+                                    if (generoObj.has("name")) {
+                                        generos[i] = generoObj.getString("name");
+                                        this.generos.put(generos[i], generos[i]);
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        }
+
+                        // Guardar película
+                        Pelicula pelicula = new Pelicula(String.valueOf(id), titulo, idioma, coleccion, revenue, generos);
+                        peliculas.put(pelicula.hashCode(), pelicula);
+                        peliculasCargadas++;
+
+                    } catch (Exception ignored) {
+                        // Fila con error → se salta
                     }
                 }
-            } catch (IOException e) {
-                System.out.println("Error al leer movies_metadata.csv");
-                e.printStackTrace();
-                ;
+
+            } catch (CsvValidationException | IOException e) {
+                System.out.println("❌ Error al leer o parsear el archivo: " + e.getMessage());
             }
+            System.out.println("🎬 Películas cargadas: " + peliculasCargadas);
         }
+
+
 
     @Override
     public void cargarCalificaciones(String rutaCsv) {
+            int calificacionesCargadas = 0;
         InputStream input = getClass().getClassLoader().getResourceAsStream(rutaCsv);
         if (input == null) {
             System.out.println(" No se encontró el archivo " + rutaCsv);
@@ -172,6 +166,7 @@ import java.util.*;
 
                     Evaluacion evaluacion = new Evaluacion(userId, movieId, rating, timestamp);
                     evaluaciones.put(evaluacion.hashCode(),evaluacion);
+                    calificacionesCargadas++;
                 } catch (Exception e) {
                     // Si la línea está mal formada, se ignora
                 }
@@ -181,20 +176,13 @@ import java.util.*;
             System.out.println(" Error al leer el archivo " + rutaCsv);
             e.printStackTrace();
         }
+        System.out.println("🎞️ Créditos cargados: " + calificacionesCargadas);
 
-
-//    private static HashMap<String, String> parsearObjeto(String texto) {
-//        HashMap<String, String> mapa = new HashMap<>(10000);
-//        Matcher m = Pattern.compile("'(\\w+)'\\s*:\\s*'?(.*?)'?(,|$)").matcher(texto);
-//        while (m.find()) {
-//            mapa.put(m.group(1), m.group(2));
-//        }
-//        return mapa;
-//    }
-        }
+    }
 
     @Override
     public void cargarCreditos(String rutaCsv) {
+            int creditsCargadas = 0;
         // Initialize maps for actors, directors, and directors with movies
         HashMap<String, Actor> actoresHashMap = new HashMap<>(100000);
         TADS.Hashmap.HashMap<String, Director> directoresHashMap = new TADS.Hashmap.HashMap<>(100000);
@@ -270,7 +258,7 @@ import java.util.*;
 
                     Creditos credito = new Creditos(movieId, miembros, actores);
                     creditos.put(movieId, credito);
-                    processedRows++;
+                    creditsCargadas++;
 
                 } catch (Exception e) {
                     skippedRows++;
@@ -284,6 +272,7 @@ import java.util.*;
         } catch (IOException | CsvException e) {
             System.out.println("Error leyendo el archivo: " + e.getMessage());
         }
+        System.out.println("🎞️ Créditos cargados: " + creditsCargadas);
     }
 
 
@@ -451,68 +440,127 @@ import java.util.*;
         System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
     }
 
+        public class ColeccionContador {
+            private int id;
+            private String nombre;
+            private int contador;
+            private int revenueTotal;
 
-        @Override
-        public void consulta3() {
-            class SagaInfo {
-                String nombre;
-                int cantidadPeliculas = 0;
-                int ingresosTotales = 0;
-                MyLinkedListImpl<String> idsPeliculas = new MyLinkedListImpl<>();
-
-                SagaInfo(String nombre) {
-                    this.nombre = nombre;
-                }
+            public ColeccionContador(int id, String nombre, int revenueInicial) {
+                this.id = id;
+                this.nombre = nombre;
+                this.contador = 1;
+                this.revenueTotal = revenueInicial;
             }
 
-            HashMap<String, SagaInfo> sagas = new HashMap<>(100000);
-
-            for (Pelicula p : peliculas.values()) {
-                String coleccionStr = p.getColeccion();
-                String nombreSaga;
-
-                if (coleccionStr != null && !coleccionStr.trim().isEmpty() && !coleccionStr.trim().equals("{}")) {
-                    try {
-                        JSONObject col = new JSONObject(coleccionStr.replace("'", "\""));
-                        nombreSaga = col.getString("name");
-                    } catch (Exception e) {
-                        nombreSaga = p.getTitulo();
-                    }
-                } else {
-                    nombreSaga = p.getTitulo();
-                }
-
-                if (!sagas.containsKey(nombreSaga)) {
-                    sagas.put(nombreSaga, new SagaInfo(nombreSaga));
-                }
-
-                SagaInfo info = sagas.get(nombreSaga);
-                info.cantidadPeliculas++;
-                info.ingresosTotales += p.getRevenue();
-                info.idsPeliculas.add(p.getId());
+            public void incrementar() {
+                this.contador++;
             }
 
-            // Convertir a lista para ordenar
-            MyList<SagaInfo> valores = sagas.values();
-            List<SagaInfo> lista = new ArrayList<>();
-
-            for (int i = 0; i < valores.getSize(); i++) {
-                lista.add(valores.get(i));
+            public void sumarRevenue(int revenue) {
+                this.revenueTotal += revenue;
             }
 
-            lista.sort((a, b) -> Integer.compare(b.ingresosTotales, a.ingresosTotales));
+            public void setRevenue(int nuevoRevenue) {
+                this.revenueTotal = nuevoRevenue;
+            }
 
-            // Mostrar
-            System.out.println("\n🎬 Top 5 sagas por ingresos:");
-            for (int i = 0; i < Math.min(5, lista.size()); i++) {
-                SagaInfo saga = lista.get(i);
-                System.out.println("- " + saga.nombre);
-                System.out.println("   🔢 Cantidad de películas: " + saga.cantidadPeliculas);
-                System.out.println("   🎞️ IDs de películas: " + saga.idsPeliculas);
-                System.out.println("   💸 Ingresos totales: " + saga.ingresosTotales);
+            public int getRevenue() {
+                return this.revenueTotal;
+            }
+
+            public int getId() {
+                return id;
+            }
+
+            public String getNombre() {
+                return nombre;
+            }
+
+            public int getContador() {
+                return contador;
+            }
+
+            @Override
+            public String toString() {
+                return "📦 ID: " + id + " | Nombre: " + nombre +
+                        " | 🎯 Películas: " + contador +
+                        " | 💰 Revenue total: " + revenueTotal;
             }
         }
 
+        public class SagaInfo {
+            private String nombre;
+            private int revenueTotal;
+
+            public SagaInfo(String nombre, int revenueInicial) {
+                this.nombre = nombre;
+                this.revenueTotal = revenueInicial;
+            }
+
+            public void sumarRevenue(int r) {
+                this.revenueTotal += r;
+            }
+
+            public String getNombre() {
+                return nombre;
+            }
+
+            public int getRevenueTotal() {
+                return revenueTotal;
+            }
+
+            @Override
+            public String toString() {
+                return "🎬 Saga: " + nombre + " | 💰 Revenue total: " + revenueTotal;
+            }
+        }
+
+        @Override
+        public void consulta3() {
+            HashMap<String, SagaInfo> sagasMap = new HashMap<>(100000);
+
+            for (Pelicula p : peliculas.values()) {
+                String claveSaga = p.getColeccion().equals("[]") ? p.getTitulo() : p.getColeccion();
+
+                SagaInfo saga = sagasMap.get(claveSaga);
+                if (saga != null) {
+                    saga.sumarRevenue(p.getRevenue());
+                } else {
+                    sagasMap.put(claveSaga, new SagaInfo(claveSaga, p.getRevenue()));
+                }
+            }
+
+            MyArrayListImpl<SagaInfo> lista = new MyArrayListImpl<>(sagasMap.size());
+            for (SagaInfo s : sagasMap.values()) {
+                lista.add(s);
+            }
+
+            // Burbuja con set y get
+            for (int i = 0; i < lista.getSize() - 1; i++) {
+                for (int j = 0; j < lista.getSize() - i - 1; j++) {
+                    try {
+                        if (lista.get(j).getRevenueTotal() < lista.get(j + 1).getRevenueTotal()) {
+                            SagaInfo temp = lista.get(j);
+                            lista.set(j, lista.get(j + 1));
+                            lista.set(j + 1, temp);
+                        }
+                    } catch (ListOutOfIndex e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            // Mostrar Top 5
+            System.out.println("\n🏆 Top 5 sagas con mayor revenue:");
+            for (int i = 0; i < Math.min(5, lista.getSize()); i++) {
+                try {
+                    System.out.println(" " + (i + 1) + ". " + lista.get(i));
+                } catch (ListOutOfIndex e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
 
 
