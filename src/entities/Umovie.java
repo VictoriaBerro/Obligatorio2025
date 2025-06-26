@@ -2,8 +2,6 @@ package entities;
 
 import Interfaz.UmovieImpl;
 import TADS.Hashmap.HashMap;
-import TADS.exceptions.ListOutOfIndex;
-import TADS.heap.MyHeapImpl;
 import TADS.list.MyArrayListImpl;
 import TADS.list.linked.MyLinkedListImpl;
 import TADS.list.MyList;
@@ -14,21 +12,17 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import com.opencsv.exceptions.CsvValidationException;
-import com.sun.jdi.Value;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static java.lang.reflect.Array.get;
-import static javax.swing.UIManager.put;
 
 public class Umovie implements UmovieImpl {
         private HashMap<Integer, Pelicula> peliculas;
@@ -54,8 +48,6 @@ public class Umovie implements UmovieImpl {
             this.directoresConPeliculas = new HashMap<>(100000);
             this.creditos = new HashMap<>(100000);
             this.datosPeliculas = new MyLinkedListImpl<>();
-;
-
 
         }
 
@@ -185,14 +177,14 @@ public class Umovie implements UmovieImpl {
             System.out.println(" Error al leer el archivo " + rutaCsv);
             e.printStackTrace();
         }
-        System.out.println("🎞️ Créditos cargados: " + calificacionesCargadas);
+        System.out.println("Créditos cargados: " + calificacionesCargadas);
 
     }
 
     @Override
     public void cargarCreditos(String rutaCsv) {
             int creditsCargadas = 0;
-        // Initialize maps for actors, directors, and directors with movies
+        // inicializo hashmaps para actores, directores y dicterores con peliculas
         HashMap<String, Actor> actoresHashMap = new HashMap<>(100000);
         TADS.Hashmap.HashMap<String, Director> directoresHashMap = new TADS.Hashmap.HashMap<>(100000);
         TADS.Hashmap.HashMap<String, MyLinkedListImpl<Integer>> directorMoviesMap = new TADS.Hashmap.HashMap<>(100000); // Director ID -> List of movie IDs
@@ -241,20 +233,20 @@ public class Umovie implements UmovieImpl {
                     MyLinkedListImpl<Actor> actores = new MyLinkedListImpl<>();
                     MyLinkedListImpl<Miembro> miembros = new MyLinkedListImpl<>();
 
-                    // Load actors into the map
+                    // Carga actores al hashmap
                     for (Actor actor : castList) {
                         actoresHashMap.put(actor.getId(), actor);
                         actores.add(actor);
                     }
 
-                    // Load directors into the map and track their movies
+                    // Carga directores al mapa y busca sus peliculas
                     for (Miembro miembro : crewList) {
                         if ("Directing".equalsIgnoreCase(miembro.getJob()) || "Director".equalsIgnoreCase(miembro.getJob())) {
                             String directorId = String.valueOf(miembro.getId());
                             Director director = new Director(Integer.parseInt(directorId));
                             directoresHashMap.put(directorId, director);
 
-                            // Add movie to the director's movie list
+                            // Agregar peliculas a la lista de directores
                             MyLinkedListImpl<Integer> movies = directorMoviesMap.get(directorId);
                             if (movies == null) {
                                 movies = new MyLinkedListImpl<>();
@@ -285,42 +277,32 @@ public class Umovie implements UmovieImpl {
     }
 
 
-
-
-
-
-
-
-
-
-
-
         @Override
         public void consulta1() {
             long inicio = System.currentTimeMillis();
 
-            // Paso 1: Contar evaluaciones por película
+            // Contamos evaluaciones por película
             HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(10000);
             for (Evaluacion e : evaluaciones.values()) {
                 int idPelicula = e.getMovieId();
                 evaluacionesPorPelicula.put(idPelicula, evaluacionesPorPelicula.getOrDefault(idPelicula, 0) + 1);
             }
 
-            // Paso 2: Agrupar películas por idioma
+            // Agrupamos películas por idioma
             HashMap<String, List<Pelicula>> peliculasPorIdioma = new HashMap<>(100000);
             for (Pelicula p : peliculas.values()) {
                 String idioma = p.getIdiomaOriginal();
                 peliculasPorIdioma.computeIfAbsent(idioma, k -> new ArrayList<>()).add(p);
             }
 
-            // Paso 3: Idiomas filtrados
+            // Filtramos idiomas
             Set<String> idiomasValidos = Set.of("en", "fr", "it", "es", "pt");
 
             for (String idioma : idiomasValidos) {
                 List<Pelicula> lista = peliculasPorIdioma.get(idioma);
                 if (lista == null || lista.isEmpty()) continue;
 
-                // Usamos PriorityQueue para ordenar por cantidad de evaluaciones (mayor primero)
+                // Usamos PriorityQueue para ordenar por cantidad de evaluaciones (el mayor primero)
                 PriorityQueue<Pelicula> topPeliculas = new PriorityQueue<>((p1, p2) -> {
                     int eval1 = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p1.getId()), 0);
                     int eval2 = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p2.getId()), 0);
@@ -329,7 +311,7 @@ public class Umovie implements UmovieImpl {
 
                 topPeliculas.addAll(lista);
 
-                // Imprimimos top 5
+                // Imprimimos el top 5
                 for (int i = 0; i < 5 && !topPeliculas.isEmpty(); i++) {
                     Pelicula p = topPeliculas.poll();
                     int total = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p.getId()), 0);
@@ -337,35 +319,40 @@ public class Umovie implements UmovieImpl {
                 }
             }
 
-            long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
-            System.out.println("⏱ Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
+            long fin = System.currentTimeMillis();
+            System.out.println(" Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
         }
 
-        @Override
+    @Override
     public void consulta2() {
+        // Medir tiempo de ejecución
         long inicio = System.currentTimeMillis();
 
-        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000);
-        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(1000000);
+        // HashMap para acumular puntajes y cantidad de evaluaciones por película
+        HashMap<String, Double> sumaPorPelicula = new HashMap<>(10000000); // idPelicula -> suma de ratings
+        HashMap<String, Integer> cantidadPorPelicula = new HashMap<>(1000000); // idPelicula -> cantidad de evaluaciones
 
+        // Recorremos todas las evaluaciones y llenar los mapas
         for (Evaluacion e : evaluaciones.values()) {
             String id = String.valueOf(e.getMovieId());
             double puntaje = e.getRating();
 
+            //Acumulamos suma de ratings
             if (sumaPorPelicula.containsKey(id)) {
                 sumaPorPelicula.put(id, sumaPorPelicula.get(id) + puntaje);
             } else {
                 sumaPorPelicula.put(id, puntaje);
             }
 
+            // Acumulamos cantidad de evaluaciones
             if (cantidadPorPelicula.containsKey(id)) {
                 cantidadPorPelicula.put(id, cantidadPorPelicula.get(id) + 1);
             } else {
                 cantidadPorPelicula.put(id, 1);
             }
-
         }
 
+        // Filtramos solo las películas con más de 100 evaluaciones
         MyList<Pelicula> candidatas = new MyArrayListImpl<>(100000);
         for (Pelicula p : peliculas.values()) {
             String id = p.getId();
@@ -374,13 +361,14 @@ public class Umovie implements UmovieImpl {
             }
         }
 
-        // Paso importante: convertir candidatas a array para poder usar Bubble Sort
+        // Convertimos la lista a array para poder ordenarla
         Pelicula[] pelis = new Pelicula[candidatas.getSize()];
         for (int i = 0; i < candidatas.getSize(); i++) {
             pelis[i] = candidatas.get(i);
         }
 
-        // Ordenar por promedio (Bubble Sort)
+        //  Ordenamos por promedio por promedio usando Bubble Sort (de mayor a menor)
+        // vimos que es muy rapido, por eso no nos complicamos con heap
         for (int i = 0; i < pelis.length - 1; i++) {
             for (int j = 0; j < pelis.length - i - 1; j++) {
                 String id1 = pelis[j].getId();
@@ -397,7 +385,7 @@ public class Umovie implements UmovieImpl {
             }
         }
 
-        // Mostrar top 10
+        //Mostrar el Top 10
         System.out.println("Top 10 de películas con mejor promedio (más de 100 calificaciones):");
         for (int i = 0; i < Math.min(10, pelis.length); i++) {
             Pelicula p = pelis[i];
@@ -410,7 +398,7 @@ public class Umovie implements UmovieImpl {
         System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
     }
 
-        public class ColeccionContador {
+    public class ColeccionContador {
             private int id;
             private String nombre;
             private int contador;
@@ -604,159 +592,100 @@ public class Umovie implements UmovieImpl {
 
 
     @Override
-
     public void consulta5() {
-
         class EstadisticasActor {
-
             String nombre;
-
             int cantidadPeliculas;
-
             int cantidadCalificaciones;
 
             EstadisticasActor(String nombre) {
-
                 this.nombre = nombre;
-
                 this.cantidadPeliculas = 0;
-
                 this.cantidadCalificaciones = 0;
-
             }
 
         }
 
-// mes (01–12) -> idActor -> estadística
+        // mes (01–12) -> idActor -> estadística
 
-        HashMap<String,HashMap<String, EstadisticasActor>> estadisticasPorMes = new HashMap<>(12);
-
+        HashMap<String, HashMap<String, EstadisticasActor>> estadisticasPorMes = new HashMap<>(12);
         HashMap<String, HashMap<Integer, HashMap<String, Boolean>>> peliculasContadas = new HashMap<>(12); // mes -> peliculaId -> actorId -> true
 
-// Inicializar meses
+        // Inicializamos meses
 
         for (int mes = 1; mes <= 12; mes++) {
-
             String mesStr = String.format("%02d", mes);
-
             estadisticasPorMes.put(mesStr, new HashMap<>(100000));
-
             peliculasContadas.put(mesStr, new HashMap<>(100000));
-
         }
 
         for (Evaluacion eval : evaluaciones.values()) {
-
             int movieId = eval.getMovieId();
-
             long timestamp = eval.getTimestamp();
 
-// Convertir timestamp a mes (01–12)
+            // Convertimos timestamp a mes (01–12)
 
             Instant instant = Instant.ofEpochSecond(timestamp);
-
             ZonedDateTime fecha = instant.atZone(ZoneId.systemDefault());
-
             String mesStr = String.format("%02d", fecha.getMonthValue());
-
             Creditos c = creditos.get(movieId);
 
             if (c == null) continue;
-
             MyLinkedListImpl<Actor> actoresPelicula = c.getActores();
-
             if (actoresPelicula == null) continue;
-
             HashMap<String, EstadisticasActor> mapaMes = estadisticasPorMes.get(mesStr);
-
             HashMap<Integer, HashMap<String, Boolean>> peliculasMes = peliculasContadas.get(mesStr);
 
             for (int i = 0; i < actoresPelicula.getSize(); i++) {
-
                 Actor actor = actoresPelicula.get(i);
-
                 String idActor = actor.getId();
-
                 if (!mapaMes.contains(idActor)) {
-
                     mapaMes.put(idActor, new EstadisticasActor(actor.getName()));
-
                 }
 
                 EstadisticasActor stats = mapaMes.get(idActor);
-
                 stats.cantidadCalificaciones++;
 
-// Verificamos si ya contamos esta película para este actor
+                // Verificamos si ya contamos esta película para este actor
 
                 if (!peliculaYaContada(idActor, movieId, peliculasMes)) {
-
                     stats.cantidadPeliculas++;
-
                 }
-
             }
-
         }
 
-// Mostrar resultados por mes
+        // Mostramos resultados por mes
 
         for (int mes = 1; mes <= 12; mes++) {
-
             String mesStr = String.format("%02d", mes);
-
             HashMap<String, EstadisticasActor> mapa = estadisticasPorMes.get(mesStr);
-
             EstadisticasActor mejor = null;
-
             for (EstadisticasActor stat : mapa.values()) {
-
                 if (mejor == null || stat.cantidadCalificaciones > mejor.cantidadCalificaciones) {
-
                     mejor = stat;
-
                 }
-
             }
-
             if (mejor != null) {
-
                 System.out.printf("Mes: %s, Actor: %s, Películas: %d, Calificaciones: %d%n",
-
                         mesStr, mejor.nombre, mejor.cantidadPeliculas, mejor.cantidadCalificaciones);
-
             } else {
-
                 System.out.printf("Mes: %s, Sin datos%n", mesStr);
-
             }
-
         }
-
     }
 
-// ✅ Método auxiliar para evitar contar misma película varias veces para un actor
+    // método auxiliar para evitar contar misma película varias veces para un actor
 
     private boolean peliculaYaContada(String actorId, int idPelicula, HashMap<Integer, HashMap<String, Boolean>> peliculasMes) {
-
         HashMap<String, Boolean> actoresPelicula = peliculasMes.get(idPelicula);
-
         if (actoresPelicula == null) {
-
             actoresPelicula = new HashMap<>(1000);
-
             peliculasMes.put(idPelicula, actoresPelicula);
-
         }
-
         if (actoresPelicula.contains(actorId)) {
-
             return true;
-
         }
-
         actoresPelicula.put(actorId, true);
-
         return false;
 
     }
