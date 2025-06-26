@@ -489,78 +489,99 @@ import java.util.*;
             }
         }
 
-        public class SagaInfo {
+        public class SagaExtendida {
+            private int idSaga;
             private String nombre;
+            private int contador;
             private int revenueTotal;
+            private MyArrayListImpl<String> idsPeliculas;
 
-            public SagaInfo(String nombre, int revenueInicial) {
+            public SagaExtendida(int idSaga, String nombre, int revenueInicial, String idPelicula) {
+                this.idSaga = idSaga;
                 this.nombre = nombre;
+                this.contador = 1;
                 this.revenueTotal = revenueInicial;
+                this.idsPeliculas = new MyArrayListImpl<>(100);
+                this.idsPeliculas.add(idPelicula);
             }
 
-            public void sumarRevenue(int r) {
-                this.revenueTotal += r;
-            }
-
-            public String getNombre() {
-                return nombre;
-            }
-
-            public int getRevenueTotal() {
-                return revenueTotal;
+            public void agregarPelicula(String idPelicula, int revenue) {
+                this.contador++;
+                this.revenueTotal += revenue;
+                this.idsPeliculas.add(idPelicula);
             }
 
             @Override
             public String toString() {
-                return "🎬 Saga: " + nombre + " | 💰 Revenue total: " + revenueTotal;
+                return "Saga: " + nombre +
+                        " | ID: " + idSaga +
+                        " | 🎞️ Películas: " + contador +
+                        " | 💰 Revenue: " + revenueTotal +
+                        " | IDs: " + Arrays.toString(idsPeliculas.toArray());
             }
+
         }
+
 
         @Override
         public void consulta3() {
-            HashMap<String, SagaInfo> sagasMap = new HashMap<>(100000);
+            HashMap<String, SagaExtendida> nuevasSagas = new HashMap<>(1000);
 
             for (Pelicula p : peliculas.values()) {
-                String claveSaga = p.getColeccion().equals("[]") ? p.getTitulo() : p.getColeccion();
+                String coleccion = p.getColeccion(); // "id/nombre" o "[]"
+                String nombreSaga;
+                int idSaga;
 
-                SagaInfo saga = sagasMap.get(claveSaga);
-                if (saga != null) {
-                    saga.sumarRevenue(p.getRevenue());
+                if (coleccion.equals("[]")) {
+                    nombreSaga = p.getTitulo();
+                    idSaga = Integer.parseInt(p.getId());
                 } else {
-                    sagasMap.put(claveSaga, new SagaInfo(claveSaga, p.getRevenue()));
+                    String[] partes = coleccion.split("/", 2);
+                    if (partes.length < 2) continue;
+                    idSaga = Integer.parseInt(partes[0]);
+                    nombreSaga = partes[1];
+                }
+
+                // Coincidencia con colección registrada
+                for (ColeccionContador c : colecciones.values()) {
+                    if (c.getNombre().equals(nombreSaga)) {
+                        idSaga = c.getId();
+                        break;
+                    }
+                }
+
+                // Actualizar o crear nueva entrada en nuevasSagas
+                SagaExtendida existente = nuevasSagas.get(nombreSaga);
+                if (existente != null) {
+                    existente.agregarPelicula(p.getId(), p.getRevenue());
+                } else {
+                    SagaExtendida nueva = new SagaExtendida(idSaga, nombreSaga, p.getRevenue(), p.getId());
+                    nuevasSagas.put(nombreSaga, nueva);
                 }
             }
 
-            MyArrayListImpl<SagaInfo> lista = new MyArrayListImpl<>(sagasMap.size());
-            for (SagaInfo s : sagasMap.values()) {
+            // Pasar a MyArrayListImpl
+            MyArrayListImpl<SagaExtendida> lista = new MyArrayListImpl<>(100000);
+            for (SagaExtendida s : nuevasSagas.values()) {
                 lista.add(s);
             }
 
-            // Burbuja con set y get
-            for (int i = 0; i < lista.getSize() - 1; i++) {
-                for (int j = 0; j < lista.getSize() - i - 1; j++) {
-                    try {
-                        if (lista.get(j).getRevenueTotal() < lista.get(j + 1).getRevenueTotal()) {
-                            SagaInfo temp = lista.get(j);
-                            lista.set(j, lista.get(j + 1));
-                            lista.set(j + 1, temp);
-                        }
-                    } catch (ListOutOfIndex e) {
-                        e.printStackTrace();
-                    }
-                }
+            // Convertir a ArrayList para ordenar
+            List<SagaExtendida> temp = new ArrayList<>();
+            for (int i = 0; i < lista.getSize(); i++) {
+                temp.add(lista.get(i));
             }
 
-            // Mostrar Top 5
-            System.out.println("\n🏆 Top 5 sagas con mayor revenue:");
-            for (int i = 0; i < Math.min(5, lista.getSize()); i++) {
-                try {
-                    System.out.println(" " + (i + 1) + ". " + lista.get(i));
-                } catch (ListOutOfIndex e) {
-                    e.printStackTrace();
-                }
+            // Ordenar por revenue descendente
+            temp.sort((a, b) -> Integer.compare(b.revenueTotal, a.revenueTotal));
+
+            // Mostrar top 5
+            System.out.println("\n🔥 TOP 5 sagas con mayor revenue:");
+            for (int i = 0; i < Math.min(5, temp.size()); i++) {
+                System.out.println((i + 1) + ". " + temp.get(i));
             }
         }
+
 
 
 
