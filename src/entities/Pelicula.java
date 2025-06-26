@@ -7,11 +7,11 @@ public class Pelicula {
     private String id;
     private String titulo;
     private String idiomaOriginal;
-    private Coleccion coleccion;  // Puede ser null si no pertenece a ninguna
+    private String coleccion;  // Puede ser null si no pertenece a ninguna
     private int revenue;
     private String[] generos;
 
-    public Pelicula(String id, String titulo, String idiomaOriginal, Coleccion coleccion, int revenue, String[] generos) {
+    public Pelicula(String id, String titulo, String idiomaOriginal, String coleccion, int revenue, String[] generos) {
         this.id = id;
         this.titulo = titulo;
         this.idiomaOriginal = idiomaOriginal;
@@ -80,11 +80,11 @@ public class Pelicula {
         return Objects.hash(id, titulo, idiomaOriginal, coleccion, revenue, Arrays.hashCode(generos));
     }
 
-    public void setColeccion(Coleccion coleccion) {
+    public void setColeccion(String coleccion) {
         this.coleccion = coleccion;
     }
 
-    public Coleccion getColeccion() {
+    public String getColeccion() {
         return coleccion;
     }
 }

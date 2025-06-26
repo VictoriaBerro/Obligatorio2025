@@ -1,10 +1,12 @@
 package Interfaz;
 
+import com.opencsv.exceptions.CsvException;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public interface UmovieImpl {
-    void cargarPeliculas(String rutaCsv) throws IOException;
+    void cargarPeliculas(String rutaCsv) throws IOException, CsvException;
     void cargarCalificaciones(String rutaCsv);
     void cargarCreditos(String rutaCsv);
 
