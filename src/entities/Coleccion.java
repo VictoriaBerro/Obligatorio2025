@@ -13,6 +13,10 @@ public class Coleccion {
         this.backdrop_path = backdrop_path;
     }
 
+    public Coleccion() {
+
+    }
+
     public int getId() {
         return id;
     }

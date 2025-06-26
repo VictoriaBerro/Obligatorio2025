@@ -38,6 +38,8 @@ public class Umovie implements UmovieImpl {
     private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
     private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
     private HashMap<Integer, Creditos> creditos;
+    private MyLinkedListImpl<Coleccion> colecciones = new MyLinkedListImpl<>();
+
     private HashMap<String, MyLinkedListImpl<Integer>> directorMovies;
 
 
@@ -125,88 +127,105 @@ public class Umovie implements UmovieImpl {
             System.out.println("No se encontró el archivo movies_metadata.csv");
             return;
         }
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {//leo linea por linea
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String linea;
-            br.readLine(); // Saltar la primera fila, no me interesan los nombres de las columnas
+            br.readLine(); // Saltar encabezado
 
             while ((linea = br.readLine()) != null) {
                 String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                //divido en columnas
 
                 if (campos.length > 17) {
                     try {
                         // ID
                         String idTexto = campos[5].trim();
+                        int id;
+                        try {
+                            id = Integer.parseInt(idTexto);
+                        } catch (NumberFormatException e) {
+                            continue; // Ignorar si no es numérico
+                        }
 
                         // Título
                         String titulo = campos[17].trim();
 
                         // Idioma original
                         String idioma = campos[7].trim();
-                        //el .trim() elimina espacios en blanco
 
-                        // Revenue
+                        // Revenue (te lo dejo en 0 si no te interesa)
                         int revenue = 0;
-                        int id;
-                        try {
-                            id = Integer.parseInt(idTexto);
-                        } catch (NumberFormatException e) {
-                            continue; // si no es un ID numérico, ignorar esa línea
-                        }
 
-                        // belongs_to_collection (parsear JSON con name)
+                        // belongs_to_collection → Crear objeto Coleccion
+                        Coleccion coleccion = null;
                         String coleccionTexto = campos[1].trim();
-                        String coleccion = null;
                         if (!coleccionTexto.isEmpty()) {
                             coleccionTexto = coleccionTexto.replace("'", "\"");
                             try {
                                 JSONObject colJson = new JSONObject(coleccionTexto);
-                                coleccion = colJson.getString("name");
+
+                                int idColeccion = colJson.has("id") && !colJson.isNull("id") ? colJson.getInt("id") : -1;
+                                String nombre = colJson.has("name") && !colJson.isNull("name") ? colJson.getString("name") : null;
+                                String poster = colJson.has("poster_path") && !colJson.isNull("poster_path") ? colJson.getString("poster_path") : null;
+                                String backdrop = colJson.has("backdrop_path") && !colJson.isNull("backdrop_path") ? colJson.getString("backdrop_path") : null;
+
+                                if (nombre != null) {
+                                    coleccion = new Coleccion(idColeccion, nombre, poster, backdrop);
+
+                                    // Ver si ya estaba en la lista
+                                    boolean yaExiste = false;
+                                    for (int i = 0; i < colecciones.getSize(); i++) {
+                                        if (colecciones.get(i).getName().equals(nombre)) {
+                                            yaExiste = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!yaExiste) {
+                                        colecciones.add(coleccion);
+                                    }
+                                }
+
                             } catch (Exception e) {
-                                // dejar coleccion como null
+                                // coleccion queda como null
                             }
                         }
 
-                        // genres (JSONArray de objetos con "name")
-                        String generosTexto = campos[3].trim();
+                        // genres
                         String[] generos = new String[0];
+                        String generosTexto = campos[3].trim();
                         if (!generosTexto.isEmpty()) {
                             try {
-                                // 👉 Arreglamos las comillas simples por dobles para que sea JSON válido
                                 generosTexto = generosTexto.replace("'", "\"");
-
                                 JSONArray generosJson = new JSONArray(generosTexto.substring(1, generosTexto.length() - 1));
                                 generos = new String[generosJson.length()];
                                 for (int i = 0; i < generosJson.length(); i++) {
                                     JSONObject generoObj = generosJson.getJSONObject(i);
                                     if (generoObj.has("name")) {
                                         generos[i] = generoObj.getString("name");
-                                        this.generos.put(generos[i],generos[i]);
+                                        this.generos.put(generos[i], generos[i]);
                                     }
                                 }
                             } catch (Exception e) {
-
+                                // ignorar
                             }
                         }
 
-
-                        // Crear objeto Pelicula
+                        // Crear película
                         String idd = String.valueOf(id);
                         Pelicula pelicula = new Pelicula(idd, titulo, idioma, coleccion, revenue, generos);
-                        peliculas.put(pelicula.hashCode(),pelicula);
-
+                        peliculas.put(pelicula.hashCode(), pelicula);
 
                     } catch (Exception e) {
-                        // Si esta línea falla, seguir con la siguiente
+                        // línea inválida
                     }
                 }
             }
         } catch (IOException e) {
             System.out.println("Error al leer movies_metadata.csv");
             e.printStackTrace();
-            ;
         }
     }
+
+
 
     @Override
     public void cargarCalificaciones(String rutaCsv) {
@@ -510,116 +529,29 @@ public class Umovie implements UmovieImpl {
     }
 
 
-
-
     @Override
     public void consulta3() {
-        long ini = System.currentTimeMillis();
-
-        // Paso 1: Agrupar películas por colección o título
-        HashMap<String, ColeccionExtendida> colecciones = new HashMap<>(1000);
-
-        MyLinkedListImpl<Pelicula> listaPeliculas = peliculas.values();
-        for (int i = 0; i < listaPeliculas.getSize(); i++) {
-            Pelicula p = listaPeliculas.get(i);
-
-            String nombreColeccion = (p.getColeccion() != null && !p.getColeccion().isEmpty())
-                    ? p.getColeccion()
-                    : p.getTitulo();
-
-            ColeccionExtendida c = colecciones.get(nombreColeccion);
-            if (c == null) {
-                c = new ColeccionExtendida(nombreColeccion);
-                colecciones.put(nombreColeccion, c);
-            }
-
-            c.idsPeliculas.add(p.getId());
-            c.revenueTotal += p.getRevenue();
-        }
-
-        // Paso 2: Pasar a lista para poder ordenar
-        MyList<ColeccionExtendida> listaColecciones = new MyLinkedListImpl<>();
-        MyList<String> claves = colecciones.keys();
-
-        for (int i = 0; i < claves.getSize(); i++) {
-            String clave = claves.get(i);
-            listaColecciones.add(colecciones.get(clave));
-        }
-
-        // Paso 3: Ordenar por revenueTotal (bubble sort)
-        int n = listaColecciones.getSize();
-        for (int i = 0; i < n - 1; i++) {
-            for (int j = 0; j < n - i - 1; j++) {
-                ColeccionExtendida a = listaColecciones.get(j);
-                ColeccionExtendida b = listaColecciones.get(j + 1);
-
-                if (a.revenueTotal < b.revenueTotal) {
-                    listaColecciones.remove(j + 1);
-                    listaColecciones.remove(j);
-                    listaColecciones.add(b, j);
-                    listaColecciones.add(a, j + 1);
-                }
-            }
-        }
-
-        // Paso 4: Mostrar top 5
-        System.out.println("Top 5 sagas/colecciones por ingresos:");
-        for (int i = 0; i < Math.min(5, listaColecciones.getSize()); i++) {
-            ColeccionExtendida c = listaColecciones.get(i);
-            System.out.printf("%d,\"%s\",%d,[%s],%d%n",
-                    i + 1,
-                    c.nombre,
-                    c.idsPeliculas.getSize(),
-                    idsComoString(c.idsPeliculas),
-                    c.revenueTotal);
-        }
-
-        System.out.printf("%nTiempo de ejecución: %d ms%n", (System.currentTimeMillis() - ini));
-    }
-    private static class ColeccionExtendida {
-        String nombre;
-        MyLinkedListImpl<String> idsPeliculas;
-        long revenueTotal;
-
-        public ColeccionExtendida(String nombre) {
-            this.nombre = nombre;
-            this.idsPeliculas = new MyLinkedListImpl<>();
-            this.revenueTotal = 0;
-        }
-    }
-    private static String idsComoString(MyLinkedListImpl<String> lista) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lista.getSize(); i++) {
-            try {
-                sb.append(lista.get(i));
-                if (i < lista.getSize() - 1) sb.append(",");
-            } catch (ListOutOfIndex e) {
-                e.printStackTrace();
-            }
-        }
-        return sb.toString();
-    }
+//        System.out.println("🎬 Películas agrupadas por colección:\n");
+//
+//        MyLinkedListImpl<String> nombresColecciones = colecciones.keys();
+//
+//        for (int i = 0; i < nombresColecciones.getSize(); i++) {
+//            String nombreColeccion = nombresColecciones.get(i);
+//            MyLinkedListImpl<Pelicula> lista = colecciones.get(nombreColeccion);
+//
+//            System.out.println("📚 Colección: " + nombreColeccion);
+//
+//            for (int j = 0; j < lista.getSize(); j++) {
+//                Pelicula p = lista.get(j);
+//                System.out.println("   🎞️ " + p.getTitulo());
+//            }
+//
+//            System.out.println(); // Espaciado entre colecciones
+//        }
+//    }
 
 
-    private static long minimo(ColeccionExtendida[] arr, int n) {
-        long m = Long.MAX_VALUE;
-        for (int i = 0; i < n; i++)
-            if (arr[i].revenueTotal < m) m = arr[i].revenueTotal;
-        return m;
-    }
-
-    private static int indiceMin(ColeccionExtendida[] arr, int n) {
-        int idx = 0;
-        long m = arr[0].revenueTotal;
-        for (int i = 1; i < n; i++)
-            if (arr[i].revenueTotal < m) {
-                m = arr[i].revenueTotal;
-                idx = i;
-            }
-        return idx;
-    }
-
-
+}
 
     @Override
     public void consulta4() {
@@ -669,10 +601,6 @@ public class Umovie implements UmovieImpl {
         System.out.println("Tiempo de ejecución de la consulta: " + tiempo + " ms");
 
     }
-
-
-
-
 
 
 
