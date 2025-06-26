@@ -137,4 +137,20 @@ public class HashMap<Key, Value> implements HashTable<Key, Value> {
     public boolean containsKey(Key key) {
         return contains(key);
     }
+
+    public Value getOrDefault(Key key, Value defaultValue) {
+        Value value = get(key);
+        return (value != null) ? value : defaultValue;
+    }
+
+    public Value computeIfAbsent(Key key, java.util.function.Function<? super Key, ? extends Value> mappingFunction) {
+        Value value = get(key);
+        if (value == null) {
+            value = mappingFunction.apply(key);
+            put(key, value);
+        }
+        return value;
+    }
+
+
 }

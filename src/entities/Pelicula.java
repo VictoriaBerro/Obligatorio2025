@@ -87,4 +87,28 @@ public class Pelicula {
     public String getColeccion() {
         return coleccion;
     }
+
+    public class PeliculaConEvaluaciones implements Comparable<PeliculaConEvaluaciones> {
+        private Pelicula pelicula;
+        private int cantidadEvaluaciones;
+
+        public PeliculaConEvaluaciones(Pelicula pelicula, int cantidadEvaluaciones) {
+            this.pelicula = pelicula;
+            this.cantidadEvaluaciones = cantidadEvaluaciones;
+        }
+
+        public Pelicula getPelicula() {
+            return pelicula;
+        }
+
+        public int getCantidadEvaluaciones() {
+            return cantidadEvaluaciones;
+        }
+
+        @Override
+        public int compareTo(PeliculaConEvaluaciones otra) {
+            return Integer.compare(this.cantidadEvaluaciones, otra.cantidadEvaluaciones); // Para usar min-heap
+        }
+    }
+
 }

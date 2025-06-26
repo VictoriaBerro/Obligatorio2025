@@ -16,7 +16,7 @@ public class Main {
             System.out.println("3. Salir");
 
             if (!scanner.hasNextInt()) {
-                System.out.println("❌ Por favor, ingrese un número válido.");
+                System.out.println("Por favor, ingrese un número válido.");
                 scanner.next();
                 continue;
             }
@@ -32,7 +32,7 @@ public class Main {
                     umovie.cargarCreditos("credits.csv"); // corregido
                     long fin = System.currentTimeMillis();
                     long duracion = fin - inicio;
-                    System.out.println("✔️ Carga de datos exitosa. Tiempo: " + duracion + " milisegundos.");
+                    System.out.println("Carga de datos exitosa. Tiempo: " + duracion + " milisegundos.");
                 } catch (Exception e) {
                     System.out.println("❌ Error durante la carga: " + e.getMessage());
                 }

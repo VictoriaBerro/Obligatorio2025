@@ -3,6 +3,7 @@ package entities;
 import Interfaz.UmovieImpl;
 import TADS.Hashmap.HashMap;
 import TADS.exceptions.ListOutOfIndex;
+import TADS.heap.MyHeapImpl;
 import TADS.list.MyArrayListImpl;
 import TADS.list.linked.MyLinkedListImpl;
 import TADS.list.MyList;
@@ -13,22 +14,27 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import com.opencsv.exceptions.CsvValidationException;
+import com.sun.jdi.Value;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.*;
 
-    public class Umovie implements UmovieImpl {
+import static java.lang.reflect.Array.get;
+import static javax.swing.UIManager.put;
+
+public class Umovie implements UmovieImpl {
         private HashMap<Integer, Pelicula> peliculas;
         private HashMap<Integer, Evaluacion> evaluaciones;
         private HashMap<String, Director> directores;
         private HashMap<String, Actor> actores;
         private HashMap<String,String> generos;
         private HashMap<String, MyLinkedListImpl<String>> actoresConPeliculas;
-        private HashMap<String, MyLinkedListImpl<String>> directoresConPeliculas;
+        private HashMap<Integer, MyLinkedListImpl<String>> directoresConPeliculas;
         private HashMap<Integer, Creditos> creditos;
         private HashMap<String, MyLinkedListImpl<Integer>> directorMovies;
         private MyLinkedListImpl<Tuple<Integer, Tuple<Integer, Integer>>> datosPeliculas;
@@ -135,9 +141,9 @@ import java.util.*;
                 }
 
             } catch (CsvValidationException | IOException e) {
-                System.out.println("❌ Error al leer o parsear el archivo: " + e.getMessage());
+                System.out.println("Error al leer o parsear el archivo: " + e.getMessage());
             }
-            System.out.println("🎬 Películas cargadas: " + peliculasCargadas);
+            System.out.println("Películas cargadas: " + peliculasCargadas);
         }
 
 
@@ -272,106 +278,83 @@ import java.util.*;
         } catch (IOException | CsvException e) {
             System.out.println("Error leyendo el archivo: " + e.getMessage());
         }
-        System.out.println("🎞️ Créditos cargados: " + creditsCargadas);
+        System.out.println("Créditos cargados: " + creditsCargadas);
     }
 
 
 
 
 
-    @Override
-    public void consulta1() {
-        long inicio = System.currentTimeMillis(); // ⏱ Inicio del tiempo
-//        // Paso 1: Calcular total de evaluaciones por película
-        HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(10000); // mapa donde la clave es el id de la peli, lo otro es cant de evaluaciones
 
-        for (Evaluacion e : evaluaciones.values()) { //Es como si dijeras: "dame solo las evaluaciones, no me importa la clave del mapa".
-            int idPelicula = e.getMovieId(); // Obtenemos el ID de la película evaluada
 
-            if (evaluacionesPorPelicula.containsKey(idPelicula)) { // Si la película ya fue evaluada antes, incrementamos su contador
-                int actual = evaluacionesPorPelicula.get(idPelicula); // Obtenemos el conteo actual
-                evaluacionesPorPelicula.put(idPelicula, actual + 1); // Sumamos una nueva evaluación
-            } else {
-                evaluacionesPorPelicula.put(idPelicula, 1);         // Si es la primera evaluación de esa película, la inicializamos con 1
+
+
+
+
+
+        @Override
+        public void consulta1() {
+            long inicio = System.currentTimeMillis();
+
+            // Paso 1: Contar evaluaciones por película
+            HashMap<Integer, Integer> evaluacionesPorPelicula = new HashMap<>(10000);
+            for (Evaluacion e : evaluaciones.values()) {
+                int idPelicula = e.getMovieId();
+                evaluacionesPorPelicula.put(idPelicula, evaluacionesPorPelicula.getOrDefault(idPelicula, 0) + 1);
             }
+
+            // Paso 2: Agrupar películas por idioma
+            HashMap<String, List<Pelicula>> peliculasPorIdioma = new HashMap<>(100000);
+            for (Pelicula p : peliculas.values()) {
+                String idioma = p.getIdiomaOriginal();
+                peliculasPorIdioma.computeIfAbsent(idioma, k -> new ArrayList<>()).add(p);
+            }
+
+            // Paso 3: Idiomas filtrados
+            Set<String> idiomasValidos = Set.of("en", "fr", "it", "es", "pt");
+
+            for (String idioma : idiomasValidos) {
+                List<Pelicula> lista = peliculasPorIdioma.get(idioma);
+                if (lista == null || lista.isEmpty()) continue;
+
+                // Usamos PriorityQueue para ordenar por cantidad de evaluaciones (mayor primero)
+                PriorityQueue<Pelicula> topPeliculas = new PriorityQueue<>((p1, p2) -> {
+                    int eval1 = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p1.getId()), 0);
+                    int eval2 = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p2.getId()), 0);
+                    return Integer.compare(eval2, eval1); // orden descendente
+                });
+
+                topPeliculas.addAll(lista);
+
+                // Imprimimos top 5
+                for (int i = 0; i < 5 && !topPeliculas.isEmpty(); i++) {
+                    Pelicula p = topPeliculas.poll();
+                    int total = evaluacionesPorPelicula.getOrDefault(Integer.parseInt(p.getId()), 0);
+                    System.out.printf("%s,%s,%d,%s%n", p.getId(), p.getTitulo(), total, idioma);
+                }
+            }
+
+            long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
+            System.out.println("⏱ Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
         }
 
-        // Paso 2: Agrupar películas por idioma
-        HashMap<String, Queue<Pelicula>> peliculasPorIdioma = new HashMap<>(10000); //clave es el idioma original de la película y  y el valor es una cola (LinkedList) con todas las películas que tienen ese idioma.
 
-        // Recorremos todas las películas del hashmap (solo los valores)
-        for (Pelicula p : peliculas.values()) {
-            String idioma = p.getIdiomaOriginal(); // Obtenemos el idioma original de la película
+    public Value getOrDefault(Key key, Value defaultValue) {
+        Value value = get(key);
+        return (value != null) ? value : defaultValue;
+    }
 
-            // Si todavía no hay una entrada para ese idioma, se crea una lista vacía
-            if (!peliculasPorIdioma.containsKey(idioma)) {
-                peliculasPorIdioma.put(idioma, new LinkedList<>()); // Inicializa la cola
-            }
-
-            // Agregamos la película a la lista correspondiente a ese idioma
-            peliculasPorIdioma.get(idioma).add(p);
+    public Value computeIfAbsent(Key key, java.util.function.Function<? super Key, ? extends Value> mappingFunction) {
+        Value value = (Value) get(key);
+        if (value == null) {
+            value = mappingFunction.apply(key);
+            put(key, value);
         }
-
-
-// Paso 3: Recorrer idiomas y mostrar top 5 películas más evaluadas por idioma
-
-    // Obtenemos la lista de idiomas (claves del mapa peliculasPorIdioma)
-        MyLinkedListImpl<String> idiomas = peliculasPorIdioma.keys();
-
-
-        for (int i = 0; i < idiomas.getSize(); i++) { //tomas cada idioma y accedes a su lista de peliculas
-            String idioma = idiomas.get(i);
-            // FILTRAR IDIOMAS
-            if (!idioma.equals("en") && !idioma.equals("fr") && !idioma.equals("it") && !idioma.equals("es") && !idioma.equals("pt")) {
-                continue; // lo salteamos si no está en la lista
-            }
-            Queue<Pelicula> lista = peliculasPorIdioma.get(idioma);
-
-        // Convertís la Queue en un array, porque no podés ordenar directamente una Queue. Entonces, copiás las películas una por una al array pelis[].
-            Pelicula[] pelis = new Pelicula[lista.size()];
-            LinkedList<Pelicula> linkedList = (LinkedList<Pelicula>) lista;
-            for (int j = 0; j < linkedList.size(); j++) {
-                pelis[j] = linkedList.get(j);
-            }
-
-        // Ordenamos las películas por cantidad de evaluaciones (de mayor a menor) usando bubble sort
-            for (int j = 0; j < pelis.length - 1; j++) {
-                for (int k = 0; k < pelis.length - j - 1; k++) {
-                    // Obtenemos las evaluaciones, y si no hay, asumimos 0
-                    int eval1 = evaluacionesPorPelicula.get(Integer.parseInt(pelis[k].getId())) != null
-                            ? evaluacionesPorPelicula.get(Integer.parseInt(pelis[k].getId()))
-                            : 0;  // parseInt lo pasa a Integer
-
-                    int eval2 = evaluacionesPorPelicula.get(Integer.parseInt(pelis[k + 1].getId())) != null
-                            ? evaluacionesPorPelicula.get(Integer.parseInt(pelis[k + 1].getId())) : 0;
-
-                    // Si eval1 < eval2, las intercambiamos
-                    if (eval1 < eval2) {
-                        Pelicula temp = pelis[k];
-                        pelis[k] = pelis[k + 1];
-                        pelis[k + 1] = temp;
-                    }}}
-
-        // Imprimimos el top 5 de ese idioma
-
-            for (int j = 0; j < Math.min(5, pelis.length); j++) {
-                Pelicula p = pelis[j];
-                int total = evaluacionesPorPelicula.get(Integer.parseInt(p.getId())) != null
-                        ? evaluacionesPorPelicula.get(Integer.parseInt(p.getId()))
-                        : 0;
-
-                // 👉 Cambio de formato de salida:
-                System.out.printf("%s,%s,%d,%s%n",
-                        p.getId(), p.getTitulo(), total, p.getIdiomaOriginal());
-            }
-        }
-
-        long fin = System.currentTimeMillis(); // ⏱ Fin del tiempo
-        System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
+        return value;
     }
 
 
-    @Override
+        @Override
     public void consulta2() {
         long inicio = System.currentTimeMillis();
 
@@ -525,6 +508,9 @@ import java.util.*;
 
         @Override
         public void consulta3() {
+            long inicio = System.currentTimeMillis();
+
+
             HashMap<String, SagaExtendida> nuevasSagas = new HashMap<>(1000);
 
             for (Pelicula p : peliculas.values()) {
@@ -580,27 +566,29 @@ import java.util.*;
             for (int i = 0; i < Math.min(5, temp.size()); i++) {
                 System.out.println((i + 1) + ". " + temp.get(i));
             }
+            long fin = System.currentTimeMillis();
+            System.out.println("Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
         }
 
 
 
 
     @Override
-    public void consulta4() {
+    public void consulta4() {// me da error porque directores tiene sus idpelicula vacio, tengo q agregarlo al descargar directores
         long ini = System.currentTimeMillis();
         MyLinkedListImpl<Tuple<Integer, Double>> directorPromedios = new MyLinkedListImpl<>();
 
         for (Director d : directores.values()) {
             int nombre = d.getIdMiembro();
-            MyLinkedListImpl<String> peliculasId = d.getPeliculasId();
+            String idD = String.valueOf(d.getIdMiembro());
+            MyLinkedListImpl<Integer> peliculasId = directorMovies.get(idD);
 
             double suma = 0.0;
             int contador = 0;
 
-            for (String id : peliculasId) {
-                Integer iid = Integer.parseInt(id);
+            for (Integer id : peliculasId) {
                 for (Evaluacion ev : evaluaciones.values()) {
-                    if (ev.getMovieId() == iid) {
+                    if (ev.getMovieId() == id) {
                         suma += ev.getRating();
                         contador++;
                     }
@@ -609,15 +597,6 @@ import java.util.*;
             if (contador > 0) {
                 double promedio = suma / contador;
                 directorPromedios.add(new Tuple<>(nombre, promedio));
-            }
-            for (int i = 0; i < directorPromedios.getSize(); i++) {
-                for (int j = 0; j < directorPromedios.getSize() - 1 - i; j++) {
-                    if (directorPromedios.get(j).compareTo(directorPromedios.get(j + 1)) > 0) {
-                        Tuple<Integer, Double> temp = directorPromedios.get(j);
-                        directorPromedios.set(j, directorPromedios.get(j + 1));
-                        directorPromedios.set(j + 1, temp);
-                    }
-                }
             }
 
         }
@@ -636,7 +615,8 @@ import java.util.*;
 
 
 
-    @Override
+
+        @Override
     public void consulta5() {//devuelvo actor con mas calificaciones por mes del anio
         //tomo las calificaciones en las q el actor participa como cal del actor
         //devuelvo mes, nombre del actor, cant peliculas vistas en el mes, cant calificaciones
