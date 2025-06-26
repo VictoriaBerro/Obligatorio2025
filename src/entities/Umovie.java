@@ -22,6 +22,9 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static java.lang.reflect.Array.get;
@@ -338,22 +341,6 @@ public class Umovie implements UmovieImpl {
             System.out.println("⏱ Tiempo de ejecución de la consulta: " + (fin - inicio) + " ms");
         }
 
-
-    public Value getOrDefault(Key key, Value defaultValue) {
-        Value value = get(key);
-        return (value != null) ? value : defaultValue;
-    }
-
-    public Value computeIfAbsent(Key key, java.util.function.Function<? super Key, ? extends Value> mappingFunction) {
-        Value value = (Value) get(key);
-        if (value == null) {
-            value = mappingFunction.apply(key);
-            put(key, value);
-        }
-        return value;
-    }
-
-
         @Override
     public void consulta2() {
         long inicio = System.currentTimeMillis();
@@ -616,10 +603,161 @@ public class Umovie implements UmovieImpl {
 
 
 
-        @Override
-    public void consulta5() {//devuelvo actor con mas calificaciones por mes del anio
-        //tomo las calificaciones en las q el actor participa como cal del actor
-        //devuelvo mes, nombre del actor, cant peliculas vistas en el mes, cant calificaciones
+    @Override
+
+    public void consulta5() {
+
+        class EstadisticasActor {
+
+            String nombre;
+
+            int cantidadPeliculas;
+
+            int cantidadCalificaciones;
+
+            EstadisticasActor(String nombre) {
+
+                this.nombre = nombre;
+
+                this.cantidadPeliculas = 0;
+
+                this.cantidadCalificaciones = 0;
+
+            }
+
+        }
+
+// mes (01–12) -> idActor -> estadística
+
+        HashMap<String,HashMap<String, EstadisticasActor>> estadisticasPorMes = new HashMap<>(12);
+
+        HashMap<String, HashMap<Integer, HashMap<String, Boolean>>> peliculasContadas = new HashMap<>(12); // mes -> peliculaId -> actorId -> true
+
+// Inicializar meses
+
+        for (int mes = 1; mes <= 12; mes++) {
+
+            String mesStr = String.format("%02d", mes);
+
+            estadisticasPorMes.put(mesStr, new HashMap<>(100000));
+
+            peliculasContadas.put(mesStr, new HashMap<>(100000));
+
+        }
+
+        for (Evaluacion eval : evaluaciones.values()) {
+
+            int movieId = eval.getMovieId();
+
+            long timestamp = eval.getTimestamp();
+
+// Convertir timestamp a mes (01–12)
+
+            Instant instant = Instant.ofEpochSecond(timestamp);
+
+            ZonedDateTime fecha = instant.atZone(ZoneId.systemDefault());
+
+            String mesStr = String.format("%02d", fecha.getMonthValue());
+
+            Creditos c = creditos.get(movieId);
+
+            if (c == null) continue;
+
+            MyLinkedListImpl<Actor> actoresPelicula = c.getActores();
+
+            if (actoresPelicula == null) continue;
+
+            HashMap<String, EstadisticasActor> mapaMes = estadisticasPorMes.get(mesStr);
+
+            HashMap<Integer, HashMap<String, Boolean>> peliculasMes = peliculasContadas.get(mesStr);
+
+            for (int i = 0; i < actoresPelicula.getSize(); i++) {
+
+                Actor actor = actoresPelicula.get(i);
+
+                String idActor = actor.getId();
+
+                if (!mapaMes.contains(idActor)) {
+
+                    mapaMes.put(idActor, new EstadisticasActor(actor.getName()));
+
+                }
+
+                EstadisticasActor stats = mapaMes.get(idActor);
+
+                stats.cantidadCalificaciones++;
+
+// Verificamos si ya contamos esta película para este actor
+
+                if (!peliculaYaContada(idActor, movieId, peliculasMes)) {
+
+                    stats.cantidadPeliculas++;
+
+                }
+
+            }
+
+        }
+
+// Mostrar resultados por mes
+
+        for (int mes = 1; mes <= 12; mes++) {
+
+            String mesStr = String.format("%02d", mes);
+
+            HashMap<String, EstadisticasActor> mapa = estadisticasPorMes.get(mesStr);
+
+            EstadisticasActor mejor = null;
+
+            for (EstadisticasActor stat : mapa.values()) {
+
+                if (mejor == null || stat.cantidadCalificaciones > mejor.cantidadCalificaciones) {
+
+                    mejor = stat;
+
+                }
+
+            }
+
+            if (mejor != null) {
+
+                System.out.printf("Mes: %s, Actor: %s, Películas: %d, Calificaciones: %d%n",
+
+                        mesStr, mejor.nombre, mejor.cantidadPeliculas, mejor.cantidadCalificaciones);
+
+            } else {
+
+                System.out.printf("Mes: %s, Sin datos%n", mesStr);
+
+            }
+
+        }
+
+    }
+
+// ✅ Método auxiliar para evitar contar misma película varias veces para un actor
+
+    private boolean peliculaYaContada(String actorId, int idPelicula, HashMap<Integer, HashMap<String, Boolean>> peliculasMes) {
+
+        HashMap<String, Boolean> actoresPelicula = peliculasMes.get(idPelicula);
+
+        if (actoresPelicula == null) {
+
+            actoresPelicula = new HashMap<>(1000);
+
+            peliculasMes.put(idPelicula, actoresPelicula);
+
+        }
+
+        if (actoresPelicula.contains(actorId)) {
+
+            return true;
+
+        }
+
+        actoresPelicula.put(actorId, true);
+
+        return false;
 
     }
 
